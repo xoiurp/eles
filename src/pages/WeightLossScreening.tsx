@@ -218,13 +218,13 @@ function WeightLossScreening() {
     try {
       const data = await proxyFetch(`/threads/${thread}/messages`, 'GET');
       console.log("Mensagens recebidas:", data);
-      const messages = data.data;
-      const assistantMessages = messages.filter((msg: AssistantMessage) => msg.role === "assistant");
       
-      if (assistantMessages.length > 0) {
-        const lastMessage = assistantMessages[0]; // Pega a mensagem mais recente
-        if (lastMessage.content[0]?.type === "text") {
-          const jsonString = lastMessage.content[0].text.value;
+      // Pega apenas a primeira mensagem (a mais recente)
+      const latestMessage = data.data[0];
+      
+      if (latestMessage && latestMessage.role === "assistant") {
+        if (latestMessage.content[0]?.type === "text") {
+          const jsonString = latestMessage.content[0].text.value;
           const cleanJson = jsonString.replace(/```json\n?|\n?```/g, '').trim();
           try {
             const parsed = JSON.parse(cleanJson) as Question;
