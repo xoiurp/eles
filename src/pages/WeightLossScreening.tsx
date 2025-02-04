@@ -158,21 +158,6 @@ function WeightLossScreening() {
         content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
           
-          Por favor, faça a próxima pergunta da triagem, seguindo estas regras:
-          1. NÃO repita nenhuma das perguntas já feitas listadas acima
-          2. Retorne APENAS um JSON com as chaves 'pergunta' e 'opcoes'
-          3. A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true
-          4. Colete as seguintes informações cruciais:
-             - Histórico de tentativas anteriores de perda de peso
-             - Presença de condições médicas relevantes
-             - Uso atual de medicamentos
-             - Histórico familiar de obesidade ou doenças relacionadas
-             - Nível de atividade física
-             - Hábitos alimentares
-             - Expectativas quanto ao tratamento
-             - Preocupações sobre o uso de medicamentos para emagrecimento
-          5. Forneça sempre opções de múltipla escolha claras e objetivas
-          
           Exemplo de resposta esperada:
           {
             "pergunta": "Qual sua frequência de atividade física semanal?",
