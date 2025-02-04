@@ -59,6 +59,11 @@ function WeightLossScreening() {
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    // Adiciona a primeira pergunta ao histórico quando o componente é montado
+    setAskedQuestions(new Set([fallbackChain[0].pergunta]));
+  }, []);
+
   // Função auxiliar para fazer requisições através do proxy
   const proxyFetch = async (path: string, method: string = 'POST', body?: any, headers: any = {}) => {
     const response = await fetch('/.netlify/functions/openai-proxy', {
@@ -217,7 +222,7 @@ function WeightLossScreening() {
       const assistantMessages = messages.filter((msg: AssistantMessage) => msg.role === "assistant");
       
       if (assistantMessages.length > 0) {
-        const lastMessage = assistantMessages[assistantMessages.length - 1];
+        const lastMessage = assistantMessages[0]; // Pega a mensagem mais recente
         if (lastMessage.content[0]?.type === "text") {
           const jsonString = lastMessage.content[0].text.value;
           const cleanJson = jsonString.replace(/```json\n?|\n?```/g, '').trim();
@@ -249,8 +254,6 @@ function WeightLossScreening() {
         currentThread = await createThread();
         if (currentThread) {
           setThreadId(currentThread);
-          // Adiciona a primeira pergunta ao histórico
-          setAskedQuestions(new Set([currentQuestion.pergunta]));
         } else {
           console.log("Falha ao criar thread, usando fallback");
           return fallbackChain[step + 1];
