@@ -46,6 +46,25 @@ const fallbackChain: Question[] = [
       "Sigo uma dieta específica",
       "Tenho restrições alimentares"
     ]
+  },
+  {
+    pergunta: "Quantas horas você costuma dormir por noite?",
+    opcoes: [
+      "Menos de 6 horas",
+      "6-7 horas",
+      "7-8 horas",
+      "Mais de 8 horas"
+    ]
+  },
+  {
+    pergunta: "Você tem alguma condição médica que afete seu peso?",
+    opcoes: [
+      "Não tenho nenhuma condição",
+      "Sim, problemas na tireoide",
+      "Sim, diabetes",
+      "Sim, outras condições"
+    ],
+    "last_step": "true"
   }
 ];
 
@@ -55,8 +74,6 @@ function WeightLossScreening() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [conversationHistory, setConversationHistory] = useState<string[]>([]);
-  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -66,24 +83,29 @@ function WeightLossScreening() {
 
   // Função auxiliar para fazer requisições através do proxy
   const proxyFetch = async (path: string, method: string = 'POST', body?: any, headers: any = {}) => {
-    const response = await fetch('/.netlify/functions/openai-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        path,
-        method,
-        body,
-        headers
-      })
-    });
+    try {
+      const response = await fetch('/.netlify/functions/openai-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path,
+          method,
+          body,
+          headers
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Erro no proxyFetch:", error);
+      throw error;
     }
-
-    return response.json();
   };
 
   // Função para aguardar o run completar
@@ -100,10 +122,8 @@ function WeightLossScreening() {
         if (!status) return false;
 
         if (status.status === 'completed') {
-          setCurrentRunId(null);
           return true;
         } else if (status.status === 'failed' || status.status === 'cancelled' || status.status === 'expired') {
-          setCurrentRunId(null);
           return false;
         }
 
@@ -115,7 +135,6 @@ function WeightLossScreening() {
       }
     }
 
-    setCurrentRunId(null);
     return false;
   };
 
@@ -134,15 +153,6 @@ function WeightLossScreening() {
   // Adiciona uma mensagem do usuário ao thread
   const addMessage = async (thread: string, answer: string): Promise<boolean> => {
     try {
-      if (currentRunId) {
-        console.log("Aguardando run atual terminar...");
-        const completed = await waitForRunCompletion(thread, currentRunId);
-        if (!completed) {
-          console.log("Run anterior não completou com sucesso");
-          return false;
-        }
-      }
-
       const data = await proxyFetch(`/threads/${thread}/messages`, 'POST', {
         role: "user",
         content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
@@ -192,7 +202,6 @@ function WeightLossScreening() {
 
       console.log("Run criado:", data);
       if (data.id && !data.error) {
-        setCurrentRunId(data.id);
         return data.id;
       }
       return null;
@@ -256,65 +265,69 @@ function WeightLossScreening() {
           setThreadId(currentThread);
         } else {
           console.log("Falha ao criar thread, usando fallback");
-          return fallbackChain[step + 1];
+          return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
         }
       }
 
       const messageAdded = await addMessage(currentThread, answer);
       if (!messageAdded) {
         console.log("Falha ao adicionar mensagem, usando fallback");
-        return fallbackChain[step + 1];
+        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
       }
 
       const runId = await runAssistant(currentThread);
       if (!runId) {
         console.log("Falha ao criar run, usando fallback");
-        return fallbackChain[step + 1];
+        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
       }
 
       const runCompleted = await waitForRunCompletion(currentThread, runId);
       if (!runCompleted) {
         console.log("Run não completou, usando fallback");
-        return fallbackChain[step + 1];
+        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
       }
 
       const response = await fetchAssistantResponse(currentThread);
       if (!response) {
         console.log("Resposta inválida ou repetida, usando fallback");
-        return fallbackChain[step + 1];
+        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
       }
       return response;
     } catch (error) {
       console.error("Erro ao obter próxima pergunta:", error);
-      return fallbackChain[step + 1];
+      return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleOptionSelect = async (answer: string) => {
-    setAnswers(prev => [...prev, answer]);
-    const apiQuestion = await getNextQuestionFromAPI(answer);
-    if (apiQuestion) {
-      setCurrentQuestion(apiQuestion);
-    } else {
-      const nextStep = step + 1;
-      if (nextStep < fallbackChain.length) {
-        setStep(nextStep);
-        setCurrentQuestion(fallbackChain[nextStep]);
-        // Adiciona a pergunta do fallback ao histórico
-        setAskedQuestions(prev => new Set([...prev, fallbackChain[nextStep].pergunta]));
+    try {
+      setAnswers(prev => [...prev, answer]);
+      const apiQuestion = await getNextQuestionFromAPI(answer);
+      
+      if (apiQuestion) {
+        setCurrentQuestion(apiQuestion);
+      } else if (step + 1 < fallbackChain.length) {
+        setStep(prev => prev + 1);
+        setCurrentQuestion(fallbackChain[step + 1]);
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
+      }
+    } catch (error) {
+      console.error("Erro ao processar resposta:", error);
+      if (step + 1 < fallbackChain.length) {
+        setStep(prev => prev + 1);
+        setCurrentQuestion(fallbackChain[step + 1]);
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
       }
     }
   };
 
   const handleContinue = () => {
-    const nextStep = step + 1;
-    if (nextStep < fallbackChain.length) {
-      setStep(nextStep);
-      setCurrentQuestion(fallbackChain[nextStep]);
-      // Adiciona a pergunta do fallback ao histórico
-      setAskedQuestions(prev => new Set([...prev, fallbackChain[nextStep].pergunta]));
+    if (step + 1 < fallbackChain.length) {
+      setStep(prev => prev + 1);
+      setCurrentQuestion(fallbackChain[step + 1]);
+      setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
     }
   };
 
