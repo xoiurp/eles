@@ -133,7 +133,7 @@ function HairGrowth() {
                       className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform"
                     />
                     <img 
-                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/aplicando-minox.webp"
+                      src="https://hxvvkrnxgdfledopeatb.supabase.co/storage/v1/object/public/bolt/hair6.webp"
                       alt="Hair Product 6"
                       className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform"
                     />
