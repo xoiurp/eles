@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface Question {
   pergunta: string;
   opcoes: string[];
-  "did-you-know"?: string;
+  "did-you-know"?: boolean;
   "last_step"?: string;
   "input-text"?: string;
 }
@@ -34,7 +34,19 @@ const fallbackChain: Question[] = [
       "Não tenho certeza! Preciso apenas emagrecer"
     ]
   },
-  // ... resto do fallbackChain ...
+  {
+    pergunta: "Qual sua frequência de atividade física semanal?",
+    opcoes: ["Nenhuma", "1-2 vezes", "3-4 vezes", "5 ou mais vezes"]
+  },
+  {
+    pergunta: "Como você descreveria seus hábitos alimentares atuais?",
+    opcoes: [
+      "Como de forma desregrada",
+      "Como regularmente, mas não controlo porções",
+      "Sigo uma dieta específica",
+      "Tenho restrições alimentares"
+    ]
+  }
 ];
 
 function WeightLossScreening() {
@@ -134,7 +146,15 @@ function WeightLossScreening() {
           1. NÃO repita nenhuma das perguntas já feitas listadas acima
           2. Retorne APENAS um JSON com as chaves 'pergunta' e 'opcoes'
           3. A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true
-          4. Mantenha as perguntas relevantes para uma triagem de emagrecimento
+          4. Mantenha as perguntas relevantes para uma triagem de emagrecimento, como:
+             - Rotina diária
+             - Hábitos alimentares
+             - Histórico de saúde
+             - Objetivos específicos
+             - Restrições alimentares
+             - Horários das refeições
+             - Consumo de água
+             - Qualidade do sono
           5. Forneça sempre opções de múltipla escolha claras e objetivas
           
           Exemplo de resposta esperada:
@@ -311,7 +331,7 @@ function WeightLossScreening() {
                   </button>
                 ))}
               </div>
-            ) : currentQuestion["did-you-know"] === "true" ? (
+            ) : currentQuestion["did-you-know"] ? (
               <div>
                 <p className="mt-4 italic text-gray-500">
                   Dica: Sabia que manter pequenas mudanças diárias pode acelerar os resultados?
