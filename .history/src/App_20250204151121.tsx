@@ -46,7 +46,6 @@ function App() {
     <div className="min-h-screen bg-white">
       <Routes>
         <Route path="/hair-growth" element={<HairGrowth />} />
-        <Route path="/emagrecimento" element={<WeightLossScreening />} />
         <Route path="/" element={
           <>
       {/* Rest of the home page content */}
@@ -157,7 +156,7 @@ function App() {
           <button className="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Leaf className="w-5 h-5 text-green-500" />
-              <Link to="/emagrecimento" className="hover:text-green-500 transition-colors">Perca Peso</Link>
+              <span>Perca Peso</span>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </button>
@@ -277,10 +276,10 @@ function App() {
                 <h3 className="text-white text-3xl font-bold">Emagrecimento</h3>
                 <div className="mt-auto">
                 <p className="text-white/90 mb-4">Emagreça com um plano personalizado feito para você.</p>
-                <Link to="/emagrecimento" className="flex gap-2">
+                <div className="flex gap-2">
                   <button className="bg-white text-black px-4 py-2 rounded-full text-sm">Conhecer</button>
                   <button className="bg-black/30 text-white px-4 py-2 rounded-full text-sm">Começar</button>
-                </Link>
+                </div>
                 </div>
               </div>
             </div>

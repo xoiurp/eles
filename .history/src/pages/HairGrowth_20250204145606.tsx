@@ -204,7 +204,7 @@ function HairGrowth() {
               <p className="text-gray-600 mb-4">
                 Preencha um questionário detalhado sobre sua saúde e histórico capilar
               </p>
-              <ArrowRight className="hidden md:block absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-8 h-8 text-gray-300" />
+              <ArrowRight className="hidden md:block absolute left-full transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-gray-300" />
             </div>
             <div className="relative">
               <div className="w-12 h-12 bg-rose-500 text-white rounded-full flex items-center justify-center mb-6">
@@ -214,7 +214,7 @@ function HairGrowth() {
               <p className="text-gray-600 mb-4">
                 Converse com um dermatologista especializado sobre seu caso
               </p>
-              <ArrowRight className="hidden md:block absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-8 h-8 text-gray-300" />
+              <ArrowRight className="hidden md:block absolute -right-4 top-4 w-8 h-8 text-gray-300" />
             </div>
             <div className="relative">
               <div className="w-12 h-12 bg-rose-500 text-white rounded-full flex items-center justify-center mb-6">
@@ -224,7 +224,7 @@ function HairGrowth() {
               <p className="text-gray-600 mb-4">
                 Receba um tratamento sob medida para suas necessidades
               </p>
-              <ArrowRight className="hidden md:block absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-8 h-8 text-gray-300" />
+              <ArrowRight className="hidden md:block absolute -right-4 top-4 w-8 h-8 text-gray-300" />
             </div>
             <div>
               <div className="w-12 h-12 bg-rose-500 text-white rounded-full flex items-center justify-center mb-6">
