@@ -162,15 +162,15 @@ function WeightLossScreening() {
           1. NÃO repita nenhuma das perguntas já feitas listadas acima
           2. Retorne APENAS um JSON com as chaves 'pergunta' e 'opcoes'
           3. A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true
-          4. Mantenha as perguntas relevantes para uma triagem de emagrecimento, como:
-             - Rotina diária
+          4. Colete as seguintes informações cruciais:
+             - Histórico de tentativas anteriores de perda de peso
+             - Presença de condições médicas relevantes
+             - Uso atual de medicamentos
+             - Histórico familiar de obesidade ou doenças relacionadas
+             - Nível de atividade física
              - Hábitos alimentares
-             - Histórico de saúde
-             - Objetivos específicos
-             - Restrições alimentares
-             - Horários das refeições
-             - Consumo de água
-             - Qualidade do sono
+             - Expectativas quanto ao tratamento
+             - Preocupações sobre o uso de medicamentos para emagrecimento
           5. Forneça sempre opções de múltipla escolha claras e objetivas
           
           Exemplo de resposta esperada:
@@ -193,10 +193,14 @@ function WeightLossScreening() {
     try {
       const data = await proxyFetch(`/threads/${thread}/runs`, 'POST', {
         assistant_id: "asst_zkToAVTPc27XnTAvV5rCFPvv",
-        instructions: `Você é o assistente virtual de um centro médico especializado em emagrecimento. 
-          Realize a triagem inicial de forma objetiva, retornando um JSON com a chave 'pergunta' e as opções na chave 'opcoes'.
+        instructions: `Você é o assistente virtual de um centro médico especializado em programas de emagrecimento com supervisão médica.
+          Seu papel é realizar a triagem inicial dos pacientes, coletando informações cruciais para avaliar a adequação dos tratamentos oferecidos.
+          Atue como um profissional de saúde experiente, especializado em tratamentos para emagrecimento.
+          Mantenha um tom profissional e empático em todas as interações.
+          
           Não repita as seguintes perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
           A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true.
+          Quando precisar que o usuário digite uma resposta, adicione ao Json a chave 'input-text' com valor 'true'.
           IMPORTANTE: Retorne apenas o JSON, sem nenhum texto adicional.`
       });
 
