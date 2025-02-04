@@ -57,6 +57,7 @@ function WeightLossScreening() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [conversationHistory, setConversationHistory] = useState<string[]>([]);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
   // Função auxiliar para fazer requisições através do proxy
   const proxyFetch = async (path: string, method: string = 'POST', body?: any, headers: any = {}) => {
@@ -139,7 +140,7 @@ function WeightLossScreening() {
 
       const data = await proxyFetch(`/threads/${thread}/messages`, 'POST', {
         role: "user",
-        content: `Histórico de perguntas já feitas: ${conversationHistory.join(", ")}. 
+        content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
           
           Por favor, faça a próxima pergunta da triagem, seguindo estas regras:
@@ -179,7 +180,7 @@ function WeightLossScreening() {
         assistant_id: "asst_zkToAVTPc27XnTAvV5rCFPvv",
         instructions: `Você é o assistente virtual de um centro médico especializado em emagrecimento. 
           Realize a triagem inicial de forma objetiva, retornando um JSON com a chave 'pergunta' e as opções na chave 'opcoes'.
-          Não repita as seguintes perguntas já feitas: ${conversationHistory.join(", ")}.
+          Não repita as seguintes perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
           A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true.
           IMPORTANTE: Retorne apenas o JSON, sem nenhum texto adicional.`
       });
@@ -222,8 +223,8 @@ function WeightLossScreening() {
           const cleanJson = jsonString.replace(/```json\n?|\n?```/g, '').trim();
           try {
             const parsed = JSON.parse(cleanJson) as Question;
-            if (!conversationHistory.includes(parsed.pergunta)) {
-              setConversationHistory(prev => [...prev, parsed.pergunta]);
+            if (!askedQuestions.has(parsed.pergunta)) {
+              setAskedQuestions(prev => new Set([...prev, parsed.pergunta]));
               return parsed;
             } else {
               console.log("Pergunta repetida detectada:", parsed.pergunta);
@@ -248,6 +249,8 @@ function WeightLossScreening() {
         currentThread = await createThread();
         if (currentThread) {
           setThreadId(currentThread);
+          // Adiciona a primeira pergunta ao histórico
+          setAskedQuestions(new Set([currentQuestion.pergunta]));
         } else {
           console.log("Falha ao criar thread, usando fallback");
           return fallbackChain[step + 1];
@@ -296,6 +299,8 @@ function WeightLossScreening() {
       if (nextStep < fallbackChain.length) {
         setStep(nextStep);
         setCurrentQuestion(fallbackChain[nextStep]);
+        // Adiciona a pergunta do fallback ao histórico
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[nextStep].pergunta]));
       }
     }
   };
@@ -305,6 +310,8 @@ function WeightLossScreening() {
     if (nextStep < fallbackChain.length) {
       setStep(nextStep);
       setCurrentQuestion(fallbackChain[nextStep]);
+      // Adiciona a pergunta do fallback ao histórico
+      setAskedQuestions(prev => new Set([...prev, fallbackChain[nextStep].pergunta]));
     }
   };
 
