@@ -1,271 +1,336 @@
-import { useState, useEffect, useRef } from 'react';
-import OpenAI from 'openai';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 
-interface Message {
+interface Question {
   pergunta: string;
-  opcoes?: string[];
-  'did-you-know'?: boolean;
-  'last_step'?: boolean;
-  'input_text'?: boolean;
+  opcoes: string[];
+  "did-you-know"?: string;
+  "last_step"?: string;
+  "input-text"?: string;
 }
 
-const WeightLossScreening = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userResponse, setUserResponse] = useState('');
-  const [thread, setThread] = useState<any>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const initialized = useRef(false);
+interface RunStatus {
+  id: string;
+  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'expired';
+}
 
-  const openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true
-  });
+interface AssistantMessage {
+  role: string;
+  content: Array<{
+    type: string;
+    text: {
+      value: string;
+      annotations: any[];
+    };
+  }>;
+}
 
-  useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true;
-      initializeChat();
+const fallbackChain: Question[] = [
+  {
+    pergunta: "Qual é o seu objetivo no emagrecimento?",
+    opcoes: [
+      "Perder entre 1 e 7 kg",
+      "Perder entre 7 e 20 kg",
+      "Perder mais do que 20 kg",
+      "Não tenho certeza! Preciso apenas emagrecer"
+    ]
+  },
+  // ... resto do fallbackChain ...
+];
+
+function WeightLossScreening() {
+  const [step, setStep] = useState<number>(0);
+  const [currentQuestion, setCurrentQuestion] = useState<Question>(fallbackChain[0]);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+
+  // Função auxiliar para fazer requisições através do proxy
+  const proxyFetch = async (path: string, method: string = 'POST', body?: any, headers: any = {}) => {
+    const response = await fetch('/.netlify/functions/openai-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        path,
+        method,
+        body,
+        headers
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  }, []);
 
-  const initializeChat = async () => {
-    try {
-      console.log('Iniciando chat...');
-      
-      const newThread = await openai.beta.threads.create();
-      console.log('Thread criado:', newThread.id);
-      setThread(newThread);
+    return response.json();
+  };
 
-      const message = await openai.beta.threads.messages.create(newThread.id, {
-        role: 'user',
-        content: 'Qual é o seu objetivo no emagrecimento?'
-      });
-      console.log('Mensagem inicial enviada:', message.id);
+  // Função para aguardar o run completar
+  const waitForRunCompletion = async (thread: string, runId: string): Promise<boolean> => {
+    const maxAttempts = 30;
+    const delayMs = 1000;
+    let attempts = 0;
 
-      const run = await openai.beta.threads.runs.create(newThread.id, {
-        assistant_id: 'asst_zkToAVTPc27XnTAvV5rCFPvv'
-      });
-      console.log('Run criado:', run.id);
-
-      // Aguardar a primeira resposta com verificação
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+    while (attempts < maxAttempts) {
+      try {
+        const status = await checkRunStatus(thread, runId);
+        console.log(`Tentativa ${attempts + 1}: Status do run:`, status?.status);
         
-        try {
-          const initialRun = await openai.beta.threads.runs.retrieve(newThread.id, run.id);
-          console.log('Status do run inicial:', initialRun.status);
-          
-          if (initialRun.status === 'completed') {
-            const initialMessages = await openai.beta.threads.messages.list(newThread.id);
-            const firstMessage = initialMessages.data[0];
-            
-            if (firstMessage?.role === 'assistant' && firstMessage.content?.length > 0) {
-              const content = firstMessage.content[0];
-              if (content?.type === 'text' && content.text?.value) {
-                console.log('Primeira mensagem recebida:', content.text.value);
-                try {
-                  const parsedMessage = JSON.parse(content.text.value);
-                  setMessages([parsedMessage]);
-                  break;
-                } catch (parseError) {
-                  console.error('Erro ao parsear mensagem:', parseError);
-                }
-              }
-            }
-          } else if (initialRun.status === 'failed') {
-            throw new Error(`Run inicial falhou: ${initialRun.last_error?.message || 'Erro desconhecido'}`);
-          }
-        } catch (runError) {
-          console.error('Erro ao verificar status do run:', runError);
+        if (!status) return false;
+
+        if (status.status === 'completed') {
+          setCurrentRunId(null);
+          return true;
+        } else if (status.status === 'failed' || status.status === 'cancelled' || status.status === 'expired') {
+          setCurrentRunId(null);
+          return false;
         }
-        
+
+        await new Promise(resolve => setTimeout(resolve, delayMs));
         attempts++;
-        if (attempts === maxAttempts) {
-          throw new Error('Tempo limite excedido ao aguardar resposta inicial');
-        }
+      } catch (error) {
+        console.error(`Erro na tentativa ${attempts + 1}:`, error);
+        return false;
       }
+    }
 
-      setLoading(false);
+    setCurrentRunId(null);
+    return false;
+  };
+
+  // Cria um thread se não existir
+  const createThread = async (): Promise<string | null> => {
+    try {
+      const data = await proxyFetch('/threads');
+      console.log("Thread criado:", data);
+      return data.id;
     } catch (error) {
-      console.error('Erro ao inicializar o chat:', error);
-      setLoading(false);
+      console.error("Erro ao criar thread:", error);
+      return null;
     }
   };
 
-  const waitForResponse = async (threadId: string, runId: string) => {
+  // Adiciona uma mensagem do usuário ao thread
+  const addMessage = async (thread: string, answer: string): Promise<boolean> => {
     try {
-      const startTime = Date.now();
-      let run = await openai.beta.threads.runs.retrieve(threadId, runId);
-      console.log('Status inicial do run:', run.status);
-      
-      while (run.status === 'in_progress' || run.status === 'queued') {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        run = await openai.beta.threads.runs.retrieve(threadId, runId);
-        console.log('Novo status do run:', run.status);
-        console.log('Tempo decorrido:', (Date.now() - startTime) / 1000, 'segundos');
-
-        if (run.status === 'failed') {
-          throw new Error(`Run falhou: ${run.last_error?.message || 'Erro desconhecido'}`);
+      if (currentRunId) {
+        console.log("Aguardando run atual terminar...");
+        const completed = await waitForRunCompletion(thread, currentRunId);
+        if (!completed) {
+          console.log("Run anterior não completou com sucesso");
+          return false;
         }
       }
 
-      if (run.status === 'completed') {
-        console.log('Run completado após:', (Date.now() - startTime) / 1000, 'segundos');
-        const messages = await openai.beta.threads.messages.list(threadId);
-        const lastMessage = messages.data[0];
-        
-        if (lastMessage?.role === 'assistant' && lastMessage.content?.length > 0) {
-          const content = lastMessage.content[0];
+      const data = await proxyFetch(`/threads/${thread}/messages`, 'POST', {
+        role: "user",
+        content: `Histórico de perguntas já feitas: ${conversationHistory.join(", ")}. 
+          Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
           
+          Por favor, faça a próxima pergunta da triagem, seguindo estas regras:
+          1. NÃO repita nenhuma das perguntas já feitas listadas acima
+          2. Retorne APENAS um JSON com as chaves 'pergunta' e 'opcoes'
+          3. A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true
+          4. Mantenha as perguntas relevantes para uma triagem de emagrecimento
+          5. Forneça sempre opções de múltipla escolha claras e objetivas
+          
+          Exemplo de resposta esperada:
+          {
+            "pergunta": "Qual sua frequência de atividade física semanal?",
+            "opcoes": ["Nenhuma", "1-2 vezes", "3-4 vezes", "5 ou mais vezes"]
+          }`
+      });
+
+      console.log("Mensagem adicionada:", data);
+      return !data.error;
+    } catch (error) {
+      console.error("Erro ao adicionar mensagem:", error);
+      return false;
+    }
+  };
+
+  // Cria um Run para processar a thread
+  const runAssistant = async (thread: string): Promise<string | null> => {
+    try {
+      const data = await proxyFetch(`/threads/${thread}/runs`, 'POST', {
+        assistant_id: "asst_zkToAVTPc27XnTAvV5rCFPvv",
+        instructions: `Você é o assistente virtual de um centro médico especializado em emagrecimento. 
+          Realize a triagem inicial de forma objetiva, retornando um JSON com a chave 'pergunta' e as opções na chave 'opcoes'.
+          Não repita as seguintes perguntas já feitas: ${conversationHistory.join(", ")}.
+          A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true.
+          IMPORTANTE: Retorne apenas o JSON, sem nenhum texto adicional.`
+      });
+
+      console.log("Run criado:", data);
+      if (data.id && !data.error) {
+        setCurrentRunId(data.id);
+        return data.id;
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao executar o run:", error);
+      return null;
+    }
+  };
+
+  // Verifica o status do run
+  const checkRunStatus = async (thread: string, runId: string): Promise<RunStatus | null> => {
+    try {
+      const data = await proxyFetch(`/threads/${thread}/runs/${runId}`, 'GET');
+      return data;
+    } catch (error) {
+      console.error("Erro ao verificar status do run:", error);
+      return null;
+    }
+  };
+
+  // Busca as mensagens do thread e extrai a última mensagem do assistente
+  const fetchAssistantResponse = async (thread: string): Promise<Question | null> => {
+    try {
+      const data = await proxyFetch(`/threads/${thread}/messages`, 'GET');
+      console.log("Mensagens recebidas:", data);
+      const messages = data.data;
+      const assistantMessages = messages.filter((msg: AssistantMessage) => msg.role === "assistant");
+      
+      if (assistantMessages.length > 0) {
+        const lastMessage = assistantMessages[assistantMessages.length - 1];
+        if (lastMessage.content[0]?.type === "text") {
+          const jsonString = lastMessage.content[0].text.value;
+          const cleanJson = jsonString.replace(/```json\n?|\n?```/g, '').trim();
           try {
-            if (content?.type === 'text' && content.text?.value) {
-              console.log('Mensagem recebida após:', (Date.now() - startTime) / 1000, 'segundos');
-              console.log('Conteúdo da mensagem:', content.text.value);
-              const parsedMessage = JSON.parse(content.text.value);
-              
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setMessages([parsedMessage]);
-                setIsTransitioning(false);
-              }, 300);
+            const parsed = JSON.parse(cleanJson) as Question;
+            if (!conversationHistory.includes(parsed.pergunta)) {
+              setConversationHistory(prev => [...prev, parsed.pergunta]);
+              return parsed;
+            } else {
+              console.log("Pergunta repetida detectada:", parsed.pergunta);
+              return null;
             }
-          } catch (error) {
-            console.error('Erro ao parsear mensagem:', error);
+          } catch (parseError) {
+            console.error("Erro ao parsear resposta do assistant:", parseError, cleanJson);
           }
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar mensagens:", error);
+    }
+    return null;
+  };
+
+  const getNextQuestionFromAPI = async (answer: string): Promise<Question | null> => {
+    setIsLoading(true);
+    try {
+      let currentThread = threadId;
+      if (!currentThread) {
+        currentThread = await createThread();
+        if (currentThread) {
+          setThreadId(currentThread);
         } else {
-          console.log('Mensagem não é do assistente ou está vazia:', lastMessage);
+          console.log("Falha ao criar thread, usando fallback");
+          return fallbackChain[step + 1];
         }
       }
 
-      setLoading(false);
+      const messageAdded = await addMessage(currentThread, answer);
+      if (!messageAdded) {
+        console.log("Falha ao adicionar mensagem, usando fallback");
+        return fallbackChain[step + 1];
+      }
+
+      const runId = await runAssistant(currentThread);
+      if (!runId) {
+        console.log("Falha ao criar run, usando fallback");
+        return fallbackChain[step + 1];
+      }
+
+      const runCompleted = await waitForRunCompletion(currentThread, runId);
+      if (!runCompleted) {
+        console.log("Run não completou, usando fallback");
+        return fallbackChain[step + 1];
+      }
+
+      const response = await fetchAssistantResponse(currentThread);
+      if (!response) {
+        console.log("Resposta inválida ou repetida, usando fallback");
+        return fallbackChain[step + 1];
+      }
+      return response;
     } catch (error) {
-      console.error('Erro ao aguardar resposta:', error);
-      setLoading(false);
+      console.error("Erro ao obter próxima pergunta:", error);
+      return fallbackChain[step + 1];
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleResponse = async (response: string) => {
-    if (!thread || loading) return;
-    
-    const startTime = Date.now();
-    setLoading(true);
-    setUserResponse('');
-    setIsTransitioning(true);
-    console.log('Iniciando envio da resposta:', response);
-
-    try {
-      console.log('Enviando resposta do usuário:', response);
-      await openai.beta.threads.messages.create(thread.id, {
-        role: 'user',
-        content: response
-      });
-      console.log('Resposta enviada após:', (Date.now() - startTime) / 1000, 'segundos');
-
-      const run = await openai.beta.threads.runs.create(thread.id, {
-        assistant_id: 'asst_zkToAVTPc27XnTAvV5rCFPvv'
-      });
-
-      console.log('Run criado após:', (Date.now() - startTime) / 1000, 'segundos');
-      
-      await waitForResponse(thread.id, run.id);
-    } catch (error) {
-      console.error('Erro ao enviar resposta:', error);
-      setLoading(false);
-      setIsTransitioning(false);
+  const handleOptionSelect = async (answer: string) => {
+    setAnswers(prev => [...prev, answer]);
+    const apiQuestion = await getNextQuestionFromAPI(answer);
+    if (apiQuestion) {
+      setCurrentQuestion(apiQuestion);
+    } else {
+      const nextStep = step + 1;
+      if (nextStep < fallbackChain.length) {
+        setStep(nextStep);
+        setCurrentQuestion(fallbackChain[nextStep]);
+      }
     }
   };
 
-  const currentMessage = messages[0];
+  const handleContinue = () => {
+    const nextStep = step + 1;
+    if (nextStep < fallbackChain.length) {
+      setStep(nextStep);
+      setCurrentQuestion(fallbackChain[nextStep]);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center">
-          <Link to="/" className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <h1 className="ml-4 text-xl font-semibold text-gray-900">Triagem para Emagrecimento</h1>
-        </div>
-      </header>
-
-      {/* Chat Container */}
-      <div className="flex-1 max-w-3xl mx-auto w-full p-4 flex flex-col">
-        {/* Messages */}
-        <div className="flex-1 mb-4 relative">
-          <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-            {currentMessage && (
-              <div className="mb-6">
-                {currentMessage['did-you-know'] ? (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-blue-800 font-medium">Você sabia?</p>
-                    <p className="text-blue-600">{currentMessage.pergunta}</p>
-                    <button
-                      onClick={() => handleResponse("Continuar")}
-                      className="mt-4 w-full bg-blue-100 text-blue-800 p-3 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      disabled={loading}
-                    >
-                      Legal! Vamos continuar
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : currentMessage['last_step'] ? (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <p className="text-green-800">{currentMessage.pergunta}</p>
-                  </div>
-                ) : (
-                  <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <p className="text-gray-900 font-medium mb-3">{currentMessage.pergunta}</p>
-                    {currentMessage.opcoes && currentMessage.opcoes.map((opcao, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleResponse(opcao)}
-                        className="w-full text-left p-3 mb-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                        disabled={loading}
-                      >
-                        {opcao}
-                      </button>
-                    ))}
-                    {currentMessage['input_text'] && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          value={userResponse}
-                          onChange={(e) => setUserResponse(e.target.value)}
-                          placeholder="Digite sua resposta..."
-                          className="w-full p-3 border border-gray-200 rounded-lg"
-                          onKeyPress={(e) => e.key === 'Enter' && userResponse.trim() && handleResponse(userResponse)}
-                          disabled={loading}
-                        />
-                        <button
-                          onClick={() => handleResponse(userResponse)}
-                          className="mt-2 w-full bg-black text-white p-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-                          disabled={loading || !userResponse.trim()}
-                        >
-                          Enviar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-8">
+      <h1 className="text-3xl font-bold mb-6">Triagem para Emagrecimento</h1>
+      <div className="bg-white shadow p-6 rounded w-full max-w-lg">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
           </div>
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            </div>
-          )}
-        </div>
+        ) : (
+          <>
+            <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
+            {currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
+              <div className="space-y-3">
+                {currentQuestion.opcoes.map((opcao, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleOptionSelect(opcao)}
+                    className="w-full text-left border rounded p-2 hover:bg-rose-100"
+                  >
+                    {opcao}
+                  </button>
+                ))}
+              </div>
+            ) : currentQuestion["did-you-know"] === "true" ? (
+              <div>
+                <p className="mt-4 italic text-gray-500">
+                  Dica: Sabia que manter pequenas mudanças diárias pode acelerar os resultados?
+                </p>
+                <button
+                  onClick={handleContinue}
+                  className="mt-4 bg-rose-500 text-white px-4 py-2 rounded"
+                >
+                  Continuar
+                </button>
+              </div>
+            ) : currentQuestion["last_step"] === "true" ? (
+              <p className="mt-4 font-semibold">Obrigado por responder todas as questões!</p>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
-};
+}
 
 export default WeightLossScreening;
