@@ -8,6 +8,12 @@ interface DadosBasicos {
   imc: number;
 }
 
+interface DadosPessoais {
+  nome: string;
+  sobrenome: string;
+  endereco: string;
+}
+
 interface EstiloVida {
   atividade_fisica: string;
   padrao_alimentar: string;
@@ -22,6 +28,7 @@ interface Tratamento {
 
 interface Summary {
   dados_basicos: DadosBasicos;
+  dados_pessoais?: DadosPessoais;
   contraindicacoes: string[];
   condicoes_relevantes: string[];
   estilo_vida: EstiloVida;
@@ -41,6 +48,7 @@ interface Question {
   "summary"?: Summary;
   "show_treatment_button"?: boolean;
   "is_treatment_selection"?: boolean;
+  "is_personal_data"?: boolean;
 }
 
 interface Message {
@@ -54,6 +62,12 @@ interface Answer {
   isRedFlag?: boolean;
 }
 
+// Determina o endpoint baseado no ambiente
+const API_ENDPOINT = import.meta.env.PROD 
+  ? 'https://eles-saude-masc.netlify.app/.netlify/functions/claude-proxy'
+  : '/.netlify/functions/claude-proxy';
+
+// Cadeia de perguntas de fallback
 const fallbackChain: Question[] = [
   {
     pergunta: "Qual é a sua idade?",
@@ -96,6 +110,12 @@ function WeightLossScreening() {
   const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
   const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
   const [hasComorbidities, setHasComorbidities] = useState<boolean>(false);
+  const [dadosPessoais, setDadosPessoais] = useState<DadosPessoais>({
+    nome: '',
+    sobrenome: '',
+    endereco: ''
+  });
+  const [showPersonalDataForm, setShowPersonalDataForm] = useState<boolean>(false);
 
   const calculateIMC = (peso: number, altura: number): number => {
     const alturaMetros = altura / 100;
@@ -108,13 +128,12 @@ function WeightLossScreening() {
     return false;
   };
 
-  // Determina o endpoint baseado no ambiente
-  const API_ENDPOINT = import.meta.env.PROD 
-    ? 'https://eles-saude-masc.netlify.app/.netlify/functions/claude-proxy'
-    : '/.netlify/functions/claude-proxy';
+  const handleTreatmentSelection = () => {
+    setShowPersonalDataForm(true);
+  };
 
-  const handleTreatmentSelection = async () => {
-    setShowTreatmentOptions(true);
+  const handlePersonalDataSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     const treatmentQuestion: Question = {
       pergunta: "Qual faixa de preço de tratamento melhor atende suas necessidades?",
       opcoes: [
@@ -122,9 +141,71 @@ function WeightLossScreening() {
         "Ozempic - Aproximadamente R$ 1.000,00 por mês",
         "Saxenda - Aproximadamente R$ 1.800,00 por mês"
       ],
-      "is_treatment_selection": true
+      "is_treatment_selection": true,
+      "summary": {
+        ...currentQuestion.summary!,
+        dados_pessoais: dadosPessoais
+      }
     };
     setCurrentQuestion(treatmentQuestion);
+    setShowPersonalDataForm(false);
+  };
+
+  const handlePersonalDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDadosPessoais(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const renderPersonalDataForm = () => {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">Dados Pessoais</h3>
+        <form onSubmit={handlePersonalDataSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nome</label>
+            <input
+              type="text"
+              name="nome"
+              value={dadosPessoais.nome}
+              onChange={handlePersonalDataChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Sobrenome</label>
+            <input
+              type="text"
+              name="sobrenome"
+              value={dadosPessoais.sobrenome}
+              onChange={handlePersonalDataChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Endereço</label>
+            <input
+              type="text"
+              name="endereco"
+              value={dadosPessoais.endereco}
+              onChange={handlePersonalDataChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-rose-500 text-white px-4 py-2 rounded hover:bg-rose-600"
+          >
+            Continuar
+          </button>
+        </form>
+      </div>
+    );
   };
 
   const getNextQuestionFromClaude = async (answer: string): Promise<Question | null> => {
@@ -146,8 +227,8 @@ function WeightLossScreening() {
             const newDados = { ...prev, altura };
             if (newDados.peso) {
               newDados.imc = calculateIMC(newDados.peso, altura);
-              if (newDados.imc < 30) {
-                setHasRedFlags(true);
+              if (!checkIMCEligibility(newDados.imc)) {
+                setHasRedFlags(!checkIMCEligibility(newDados.imc));
               }
             }
             return newDados;
@@ -160,7 +241,6 @@ function WeightLossScreening() {
           currentQuestion.pergunta.toLowerCase().includes("hipertensão")) {
         if (answer.toLowerCase() === "sim") {
           setHasComorbidities(true);
-          // Recalcular elegibilidade baseada no IMC se já tiver os dados
           if (dadosBasicos.imc) {
             setHasRedFlags(!checkIMCEligibility(dadosBasicos.imc));
           }
@@ -198,8 +278,6 @@ function WeightLossScreening() {
         }
       ];
 
-      console.log('Enviando mensagens para o Claude:', JSON.stringify(updatedMessages, null, 2));
-
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -219,8 +297,6 @@ function WeightLossScreening() {
         }
         throw new Error(data.details || 'Falha na comunicação com o Claude');
       }
-
-      console.log('Resposta recebida do Claude:', JSON.stringify(data, null, 2));
 
       if (!data.content?.[0]?.text?.value) {
         throw new Error('Resposta do Claude em formato inválido');
@@ -271,15 +347,15 @@ function WeightLossScreening() {
 
   const handleOptionSelect = async (answer: string) => {
     if (currentQuestion.is_treatment_selection) {
-      // Finalizar com a seleção do tratamento
       const currentSummary = currentQuestion.summary || {
         dados_basicos: dadosBasicos as DadosBasicos,
+        dados_pessoais: dadosPessoais,
         contraindicacoes: [],
         condicoes_relevantes: [],
         estilo_vida: {
-          atividade_fisica: "",
-          padrao_alimentar: "",
-          qualidade_sono: ""
+          atividade_fisica: answers.find(a => a.question.includes("atividade física"))?.answer || "",
+          padrao_alimentar: answers.find(a => a.question.includes("hábitos alimentares"))?.answer || "",
+          qualidade_sono: answers.find(a => a.question.includes("dormir"))?.answer || ""
         },
         elegivel_tratamento: true
       };
@@ -288,11 +364,13 @@ function WeightLossScreening() {
         pergunta: "Resumo do tratamento selecionado",
         "last_step": "true",
         "summary": {
- ...currentSummary, tratamentos_indicados: [{
- nome: answer.split(" - ")[0],
- preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
- descricao: answer
- }] }
+          ...currentSummary,
+          tratamentos_indicados: [{
+            nome: answer.split(" - ")[0],
+            preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
+            descricao: answer
+          }]
+        }
       };
       setCurrentQuestion(treatmentSummary);
       return;
@@ -312,7 +390,7 @@ function WeightLossScreening() {
       }
     } catch (error) {
       console.error("Erro ao processar resposta:", error);
-      const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+      const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === currentQuestion.pergunta);
       if (currentIndex < fallbackChain.length - 1) {
         setCurrentQuestion(fallbackChain[currentIndex + 1]);
         setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
@@ -334,7 +412,7 @@ function WeightLossScreening() {
   const renderSummary = () => {
     if (!currentQuestion.summary) return null;
     
-    const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
+    const { dados_basicos, dados_pessoais, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
     
     return (
       <div className="space-y-4">
@@ -347,6 +425,14 @@ function WeightLossScreening() {
           <p>Altura: {dados_basicos.altura} cm</p>
           <p>IMC: {dados_basicos.imc}</p>
         </div>
+
+        {dados_pessoais && (
+          <div className="bg-gray-50 p-4 rounded">
+            <h4 className="font-semibold mb-2">Dados Pessoais</h4>
+            <p>Nome: {dados_pessoais.nome} {dados_pessoais.sobrenome}</p>
+            <p>Endereço: {dados_pessoais.endereco}</p>
+          </div>
+        )}
 
         {contraindicacoes.length > 0 && (
           <div className="bg-red-50 p-4 rounded">
@@ -384,7 +470,7 @@ function WeightLossScreening() {
               ? 'Elegível para o programa de emagrecimento.' 
               : 'Não elegível para o programa de emagrecimento neste momento.'}
           </p>
-          {elegivel_tratamento && !showTreatmentOptions && dados_basicos && estilo_vida && (
+          {elegivel_tratamento && !showTreatmentOptions && !tratamentos_indicados && (
             <button
               onClick={handleTreatmentSelection}
               className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
@@ -424,7 +510,9 @@ function WeightLossScreening() {
                 {error}
               </div>
             )}
-            {currentQuestion["last_step"] === "true" ? (
+            {showPersonalDataForm ? (
+              renderPersonalDataForm()
+            ) : currentQuestion["last_step"] === "true" ? (
               renderSummary()
             ) : currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <>
