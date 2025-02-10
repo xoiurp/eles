@@ -104,7 +104,7 @@ function WeightLossScreening() {
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
-    ? 'https://les-saude-masc.netlify.app/.netlify/functions/claude-proxy'
+    ? 'https://eles-saude-masc.netlify.app/.netlify/functions/claude-proxy'
     : '/.netlify/functions/claude-proxy';
 
   const getNextQuestionFromClaude = async (answer: string): Promise<Question | null> => {
