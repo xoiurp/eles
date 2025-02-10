@@ -71,7 +71,7 @@ Para perguntas de follow-up:
   "input-text": true
 }
 
-Para fatos educativos (a cada 3 perguntas):
+Para fatos educativos (a cada 5 perguntas):
 {
   "pergunta": "Fato relacionado às respostas anteriores",
   "did-you-know": true
@@ -117,7 +117,7 @@ Para finalização:
    - IMC < 30 (exceto se houver comorbidades como diabetes/hipertensão com IMC > 27)
 
 7. Fatos Educativos:
-   - Apresentar um fato educativo a cada 3 perguntas
+   - Apresentar um fato educativo a cada 5 perguntas
    - Os fatos devem ser relacionados às respostas anteriores do paciente
    - Após apresentar o fato, continuar com o fluxo normal de perguntas
 

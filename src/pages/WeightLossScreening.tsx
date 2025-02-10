@@ -150,11 +150,11 @@ function WeightLossScreening() {
           
           Perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
-          Número de perguntas feitas desde o último fato curioso: ${questionCount % 3}
+          Número de perguntas feitas desde o último fato curioso: ${questionCount % 5}
           Dados básicos coletados: ${JSON.stringify(dadosBasicos)}
           Red flags detectadas: ${hasRedFlags}
           
-          IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 2 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores. Após o fato curioso, continue o fluxo de perguntas normalmente.` 
+          IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 4 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores. Após o fato curioso, continue o fluxo de perguntas normalmente.` 
         }
       ];
 
