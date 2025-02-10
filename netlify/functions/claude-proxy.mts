@@ -36,7 +36,7 @@ export default async (request: Request, context: Context) => {
         'X-Title': 'Triagem Emagrecimento'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-latest',
+        model: 'anthropic/claude-3.5-sonnet-20240620',
         messages: messages.map((msg: any) => ({
           role: msg.role,
           content: msg.content
