@@ -77,6 +77,17 @@ Para fatos educativos (a cada 5 perguntas):
   "did-you-know": true
 }
 
+Para seleção de tratamento:
+{
+  "pergunta": "Qual faixa de preço de tratamento melhor atende suas necessidades?",
+  "opcoes": [
+    "Contrave (Bupropiona + Naltrexona) - Aproximadamente R$ 400,00 por mês",
+    "Ozempic - Aproximadamente R$ 1.000,00 por mês",
+    "Saxenda - Aproximadamente R$ 1.800,00 por mês"
+  ],
+  "is_treatment_selection": true
+}
+
 Para finalização:
 {
   "pergunta": "Resumo da triagem",
@@ -96,7 +107,14 @@ Para finalização:
       "padrao_alimentar": string,
       "qualidade_sono": string
     },
-    "elegivel_tratamento": boolean
+    "elegivel_tratamento": boolean,
+    "tratamentos_indicados": [
+      {
+        "nome": string,
+        "preco": number,
+        "descricao": string
+      }
+    ]
   }
 }
 
@@ -127,6 +145,12 @@ Para finalização:
    - Incluir detalhes importantes no resumo final
    - Usar essas informações para personalizar fatos educativos subsequentes
 
+9. Seleção de Tratamento:
+   - Após confirmar elegibilidade, permitir seleção do tratamento
+   - Apresentar opções de medicamentos com preços
+   - Incluir tratamento selecionado no resumo final
+   - Manter tracking das contraindicações específicas para cada medicamento
+
 LEMBRE-SE: 
 1. SEMPRE retorne apenas UM objeto JSON por resposta
 2. SEMPRE siga EXATAMENTE os formatos JSON especificados
@@ -134,4 +158,5 @@ LEMBRE-SE:
 4. NUNCA pule a ordem das perguntas estabelecida
 5. SEMPRE faça uma pergunta de follow-up após respostas positivas que necessitem detalhamento
 6. SEMPRE mantenha o tracking das red flags para o resumo final
-7. SEMPRE inclua as informações detalhadas das respostas de follow-up no resumo final`;
+7. SEMPRE inclua as informações detalhadas das respostas de follow-up no resumo final
+8. SEMPRE permita a seleção de tratamento apenas para pacientes elegíveis`;

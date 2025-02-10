@@ -14,12 +14,19 @@ interface EstiloVida {
   qualidade_sono: string;
 }
 
+interface Tratamento {
+  nome: string;
+  preco: number;
+  descricao: string;
+}
+
 interface Summary {
   dados_basicos: DadosBasicos;
   contraindicacoes: string[];
   condicoes_relevantes: string[];
   estilo_vida: EstiloVida;
   elegivel_tratamento: boolean;
+  tratamentos_indicados?: Tratamento[];
 }
 
 interface Question {
@@ -32,6 +39,8 @@ interface Question {
   "red_flag_value"?: string;
   "red_flags_detected"?: boolean;
   "summary"?: Summary;
+  "show_treatment_button"?: boolean;
+  "is_treatment_selection"?: boolean;
 }
 
 interface Message {
@@ -85,6 +94,7 @@ function WeightLossScreening() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [hasRedFlags, setHasRedFlags] = useState<boolean>(false);
   const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
+  const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
 
   const calculateIMC = (peso: number, altura: number): number => {
     const alturaMetros = altura / 100;
@@ -96,11 +106,24 @@ function WeightLossScreening() {
     ? 'https://eles-saude-masc.netlify.app/.netlify/functions/claude-proxy'
     : '/.netlify/functions/claude-proxy';
 
+  const handleTreatmentSelection = async () => {
+    setShowTreatmentOptions(true);
+    const treatmentQuestion: Question = {
+      pergunta: "Qual faixa de preço de tratamento melhor atende suas necessidades?",
+      opcoes: [
+        "Contrave (Bupropiona + Naltrexona) - Aproximadamente R$ 400,00 por mês",
+        "Ozempic - Aproximadamente R$ 1.000,00 por mês",
+        "Saxenda - Aproximadamente R$ 1.800,00 por mês"
+      ],
+      "is_treatment_selection": true
+    };
+    setCurrentQuestion(treatmentQuestion);
+  };
+
   const getNextQuestionFromClaude = async (answer: string): Promise<Question | null> => {
     setIsLoading(true);
     setError(null);
     try {
-      // Processar dados básicos se necessário
       if (currentQuestion["input-text"]) {
         const numericAnswer = parseFloat(answer);
         if (currentQuestion.pergunta.includes("idade")) {
@@ -116,7 +139,6 @@ function WeightLossScreening() {
             const newDados = { ...prev, altura };
             if (newDados.peso) {
               newDados.imc = calculateIMC(newDados.peso, altura);
-              // Verificar IMC como red flag
               if (newDados.imc < 30) {
                 setHasRedFlags(true);
               }
@@ -126,12 +148,10 @@ function WeightLossScreening() {
         }
       }
 
-      // Verificar red flags nas respostas de múltipla escolha
       if (currentQuestion.is_red_flag && answer === currentQuestion.red_flag_value) {
         setHasRedFlags(true);
       }
 
-      // Adicionar a resposta atual ao histórico
       const newAnswers = [...answers, { 
         question: currentQuestion.pergunta, 
         answer,
@@ -153,6 +173,7 @@ function WeightLossScreening() {
           Número de perguntas feitas desde o último fato curioso: ${questionCount % 5}
           Dados básicos coletados: ${JSON.stringify(dadosBasicos)}
           Red flags detectadas: ${hasRedFlags}
+          Seleção de tratamento: ${showTreatmentOptions}
           
           IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 4 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores. Após o fato curioso, continue o fluxo de perguntas normalmente.` 
         }
@@ -218,8 +239,7 @@ function WeightLossScreening() {
       } catch (parseError) {
         console.error("Erro ao parsear resposta do Claude:", parseError);
         console.error("Conteúdo que causou o erro:", assistantMessage);
-        setError(`Erro ao processar resposta do Claude: ${parseError instanceof Error ? parseError.message : 'Erro desconhecido'}`);
-        throw parseError;
+        throw new Error(`Erro ao processar resposta do Claude: ${parseError instanceof Error ? parseError.message : 'Erro desconhecido'}`);
       }
     } catch (error) {
       console.error("Erro ao obter próxima pergunta:", error);
@@ -231,6 +251,24 @@ function WeightLossScreening() {
   };
 
   const handleOptionSelect = async (answer: string) => {
+    if (currentQuestion.is_treatment_selection) {
+      // Finalizar com a seleção do tratamento
+      const treatmentSummary: Question = {
+        pergunta: "Resumo do tratamento selecionado",
+        "last_step": "true",
+        "summary": {
+          ...currentQuestion.summary!,
+          tratamentos_indicados: [{
+            nome: answer.split(" - ")[0],
+            preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
+            descricao: answer
+          }]
+        }
+      };
+      setCurrentQuestion(treatmentSummary);
+      return;
+    }
+
     try {
       const nextQuestion = await getNextQuestionFromClaude(answer);
       if (nextQuestion) {
@@ -267,7 +305,7 @@ function WeightLossScreening() {
   const renderSummary = () => {
     if (!currentQuestion.summary) return null;
     
-    const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento } = currentQuestion.summary;
+    const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
     
     return (
       <div className="space-y-4">
@@ -317,7 +355,27 @@ function WeightLossScreening() {
               ? 'Elegível para o programa de emagrecimento.' 
               : 'Não elegível para o programa de emagrecimento neste momento.'}
           </p>
+          {elegivel_tratamento && !showTreatmentOptions && (
+            <button
+              onClick={handleTreatmentSelection}
+              className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
+            >
+              Entender Tratamento
+            </button>
+          )}
         </div>
+
+        {tratamentos_indicados && tratamentos_indicados.length > 0 && (
+          <div className="bg-green-50 p-4 rounded">
+            <h4 className="font-semibold mb-2">Tratamento Selecionado</h4>
+            {tratamentos_indicados.map((tratamento, index) => (
+              <div key={index} className="space-y-2">
+                <p className="font-medium">{tratamento.nome}</p>
+                <p>{tratamento.descricao}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
