@@ -95,10 +95,17 @@ function WeightLossScreening() {
   const [hasRedFlags, setHasRedFlags] = useState<boolean>(false);
   const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
   const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
+  const [hasComorbidities, setHasComorbidities] = useState<boolean>(false);
 
   const calculateIMC = (peso: number, altura: number): number => {
     const alturaMetros = altura / 100;
     return Number((peso / (alturaMetros * alturaMetros)).toFixed(1));
+  };
+
+  const checkIMCEligibility = (imc: number): boolean => {
+    if (imc >= 30) return true;
+    if (imc > 27 && imc < 30 && hasComorbidities) return true;
+    return false;
   };
 
   // Determina o endpoint baseado no ambiente
@@ -145,6 +152,18 @@ function WeightLossScreening() {
             }
             return newDados;
           });
+        }
+      }
+
+      // Verificar respostas sobre comorbidades
+      if (currentQuestion.pergunta.toLowerCase().includes("diabetes") || 
+          currentQuestion.pergunta.toLowerCase().includes("hipertensão")) {
+        if (answer.toLowerCase() === "sim") {
+          setHasComorbidities(true);
+          // Recalcular elegibilidade baseada no IMC se já tiver os dados
+          if (dadosBasicos.imc) {
+            setHasRedFlags(!checkIMCEligibility(dadosBasicos.imc));
+          }
         }
       }
 
