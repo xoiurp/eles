@@ -266,18 +266,9 @@ function WeightLossScreening() {
     }
   };
 
-  const handleContinue = async () => {
-    // Após um fato curioso, continuar o fluxo normal de perguntas
-    const nextQuestion = await getNextQuestionFromClaude("Entendi o fato curioso, vamos continuar.");
-    if (nextQuestion) {
-      setCurrentQuestion(nextQuestion);
-    } else {
-      const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
-      if (currentIndex < fallbackChain.length - 1) {
-        setCurrentQuestion(fallbackChain[currentIndex + 1]);
-        setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
-      }
-    }
+  const handleContinue = () => {
+    // Tratar o botão "Continuar" como uma resposta normal
+    handleOptionSelect("Entendi o fato curioso: " + currentQuestion.pergunta);
   };
 
   return (
