@@ -26,17 +26,17 @@ export default async (request: Request, context: Context) => {
 
     console.log('Requisição recebida:', JSON.stringify(messages, null, 2))
 
-    // Fazer a requisição para a API do Claude
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Fazer a requisição para a API da Openrouter
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://eles-saude-masc.netlify.app/',
+        'X-Title': 'Triagem Emagrecimento'
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-latest',
-        max_tokens: 4096,
         messages: messages.map((msg: any) => ({
           role: msg.role,
           content: msg.content
@@ -46,21 +46,21 @@ export default async (request: Request, context: Context) => {
     })
 
     const data = await response.json()
-    console.log('Resposta do Claude:', JSON.stringify(data, null, 2))
+    console.log('Resposta da Openrouter:', JSON.stringify(data, null, 2))
 
     // Verificar se há erro na resposta
     if (!response.ok) {
-      throw new Error(`Claude API error: ${JSON.stringify(data)}`)
+      throw new Error(`Openrouter API error: ${JSON.stringify(data)}`)
     }
 
     // Verificar se a resposta tem o formato esperado
-    if (!data.content?.[0]?.text) {
-      console.error('Resposta inesperada do Claude:', data);
+    if (!data.choices?.[0]?.message?.content) {
+      console.error('Resposta inesperada da Openrouter:', data);
       throw new Error(`Resposta em formato inválido: ${JSON.stringify(data)}`);
     }
 
     // Extrair e limpar o texto da resposta
-    let responseText = data.content[0].text;
+    let responseText = data.choices[0].message.content;
     console.log('Texto original da resposta:', responseText);
     
     // Remover possíveis marcadores de código e espaços em branco
@@ -99,7 +99,7 @@ export default async (request: Request, context: Context) => {
         throw new Error('JSON não contém as propriedades necessárias');
       }
 
-      // Formatar a resposta final
+      // Formatar a resposta final no formato esperado pelo componente
       const formattedResponse = {
         content: [{
           type: 'text',
