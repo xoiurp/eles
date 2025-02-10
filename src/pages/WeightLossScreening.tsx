@@ -272,17 +272,27 @@ function WeightLossScreening() {
   const handleOptionSelect = async (answer: string) => {
     if (currentQuestion.is_treatment_selection) {
       // Finalizar com a seleção do tratamento
+      const currentSummary = currentQuestion.summary || {
+        dados_basicos: dadosBasicos as DadosBasicos,
+        contraindicacoes: [],
+        condicoes_relevantes: [],
+        estilo_vida: {
+          atividade_fisica: "",
+          padrao_alimentar: "",
+          qualidade_sono: ""
+        },
+        elegivel_tratamento: true
+      };
+
       const treatmentSummary: Question = {
         pergunta: "Resumo do tratamento selecionado",
         "last_step": "true",
         "summary": {
-          ...currentQuestion.summary!,
-          tratamentos_indicados: [{
-            nome: answer.split(" - ")[0],
-            preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
-            descricao: answer
-          }]
-        }
+ ...currentSummary, tratamentos_indicados: [{
+ nome: answer.split(" - ")[0],
+ preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
+ descricao: answer
+ }] }
       };
       setCurrentQuestion(treatmentSummary);
       return;
@@ -374,7 +384,7 @@ function WeightLossScreening() {
               ? 'Elegível para o programa de emagrecimento.' 
               : 'Não elegível para o programa de emagrecimento neste momento.'}
           </p>
-          {elegivel_tratamento && !showTreatmentOptions && (
+          {elegivel_tratamento && !showTreatmentOptions && dados_basicos && estilo_vida && (
             <button
               onClick={handleTreatmentSelection}
               className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
