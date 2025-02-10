@@ -67,7 +67,7 @@ export default async (request: Request, context: Context) => {
     responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
     console.log('Texto após limpeza:', responseText);
 
-    // Função para extrair o primeiro objeto JSON válido de uma string
+    // Função para extrair o primeiro objeto JSON válido
     const extractFirstJsonObject = (text: string): string => {
       let depth = 0;
       let start = text.indexOf('{');
@@ -95,7 +95,7 @@ export default async (request: Request, context: Context) => {
       console.log('JSON parseado com sucesso:', parsedJson);
 
       // Verificar se tem as propriedades necessárias
-      if (!parsedJson.pergunta || (!parsedJson["did-you-know"] && !Array.isArray(parsedJson.opcoes))) {
+      if (!parsedJson.pergunta || (!parsedJson["did-you-know"] && !parsedJson["last_step"] && !parsedJson["input-text"] && !Array.isArray(parsedJson.opcoes))) {
         throw new Error('JSON não contém as propriedades necessárias');
       }
 

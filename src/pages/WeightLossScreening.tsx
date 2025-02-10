@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 
 interface Question {
   pergunta: string;
-  opcoes: string[];
+  opcoes?: string[];
   "did-you-know"?: boolean;
   "last_step"?: string;
-  "input-text"?: string;
+  "input-text"?: boolean;
 }
 
 interface Message {
@@ -69,10 +69,16 @@ INSTRUÇÕES:
 
 2. Formato das Respostas:
 
-Para perguntas normais (use este formato para perguntas regulares):
+Para perguntas de múltipla escolha:
 {
   "pergunta": "Sua pergunta aqui",
   "opcoes": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"]
+}
+
+Para perguntas que precisam de resposta livre:
+{
+  "pergunta": "Sua pergunta aqui",
+  "input-text": true
 }
 
 Para fatos curiosos (use este formato após cada 2 perguntas):
@@ -105,13 +111,7 @@ Para finalizar (use quando todas as informações forem coletadas):
 - Baseie os fatos curiosos nas respostas anteriores do usuário
 - Retorne apenas UM objeto JSON por resposta, sem texto adicional
 - Após mostrar um fato curioso, a próxima resposta deve ser uma nova pergunta
-
-Exemplo de Sequência:
-1. Primeira pergunta (JSON com pergunta e opções)
-2. Segunda pergunta (JSON com pergunta e opções)
-3. Fato curioso baseado nas duas respostas (JSON com did-you-know)
-4. Terceira pergunta (JSON com pergunta e opções)
-5. E assim por diante...
+- Use input-text: true quando precisar de uma resposta detalhada do usuário
 
 IMPORTANTE: Retorne apenas UM objeto JSON por resposta, sem texto adicional.`;
 
@@ -122,6 +122,7 @@ function WeightLossScreening() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(0);
+  const [textInput, setTextInput] = useState<string>('');
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
@@ -226,6 +227,7 @@ function WeightLossScreening() {
       const nextQuestion = await getNextQuestionFromClaude(answer);
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
+        setTextInput(''); // Limpar input de texto ao mudar de pergunta
       } else {
         const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
         if (currentIndex < fallbackChain.length - 1) {
@@ -240,6 +242,13 @@ function WeightLossScreening() {
         setCurrentQuestion(fallbackChain[currentIndex + 1]);
         setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
       }
+    }
+  };
+
+  const handleTextSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (textInput.trim()) {
+      await handleOptionSelect(textInput);
     }
   };
 
@@ -279,6 +288,23 @@ function WeightLossScreening() {
                   </button>
                 ))}
               </div>
+            ) : currentQuestion["input-text"] ? (
+              <form onSubmit={handleTextSubmit} className="space-y-3">
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  className="w-full p-2 border rounded resize-none"
+                  rows={4}
+                  placeholder="Digite sua resposta aqui..."
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-rose-500 text-white px-4 py-2 rounded"
+                  disabled={!textInput.trim()}
+                >
+                  Enviar
+                </button>
+              </form>
             ) : currentQuestion["did-you-know"] ? (
               <div>
                 <p className="mt-4 italic text-gray-500">
