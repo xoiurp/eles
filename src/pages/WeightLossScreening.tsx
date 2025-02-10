@@ -48,7 +48,6 @@ interface Question {
   "summary"?: Summary;
   "show_treatment_button"?: boolean;
   "is_treatment_selection"?: boolean;
-  "is_personal_data"?: boolean;
 }
 
 interface Message {
@@ -67,7 +66,6 @@ const API_ENDPOINT = import.meta.env.PROD
   ? 'https://eles-saude-masc.netlify.app/.netlify/functions/claude-proxy'
   : '/.netlify/functions/claude-proxy';
 
-// Cadeia de perguntas de fallback
 const fallbackChain: Question[] = [
   {
     pergunta: "Qual é a sua idade?",
@@ -110,12 +108,12 @@ function WeightLossScreening() {
   const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
   const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
   const [hasComorbidities, setHasComorbidities] = useState<boolean>(false);
+  const [showPersonalDataForm, setShowPersonalDataForm] = useState<boolean>(false);
   const [dadosPessoais, setDadosPessoais] = useState<DadosPessoais>({
     nome: '',
     sobrenome: '',
     endereco: ''
   });
-  const [showPersonalDataForm, setShowPersonalDataForm] = useState<boolean>(false);
 
   const calculateIMC = (peso: number, altura: number): number => {
     const alturaMetros = altura / 100;
@@ -129,11 +127,6 @@ function WeightLossScreening() {
   };
 
   const handleTreatmentSelection = () => {
-    setShowPersonalDataForm(true);
-  };
-
-  const handlePersonalDataSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
     const treatmentQuestion: Question = {
       pergunta: "Qual faixa de preço de tratamento melhor atende suas necessidades?",
       opcoes: [
@@ -141,13 +134,14 @@ function WeightLossScreening() {
         "Ozempic - Aproximadamente R$ 1.000,00 por mês",
         "Saxenda - Aproximadamente R$ 1.800,00 por mês"
       ],
-      "is_treatment_selection": true,
-      "summary": {
-        ...currentQuestion.summary!,
-        dados_pessoais: dadosPessoais
-      }
+      "is_treatment_selection": true
     };
     setCurrentQuestion(treatmentQuestion);
+    setShowTreatmentOptions(true);
+  };
+
+  const handlePersonalDataSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     setShowPersonalDataForm(false);
   };
 
@@ -347,30 +341,27 @@ function WeightLossScreening() {
 
   const handleOptionSelect = async (answer: string) => {
     if (currentQuestion.is_treatment_selection) {
-      const currentSummary = currentQuestion.summary || {
+      const currentSummary = {
         dados_basicos: dadosBasicos as DadosBasicos,
-        dados_pessoais: dadosPessoais,
         contraindicacoes: [],
         condicoes_relevantes: [],
         estilo_vida: {
-          atividade_fisica: answers.find(a => a.question.includes("atividade física"))?.answer || "",
-          padrao_alimentar: answers.find(a => a.question.includes("hábitos alimentares"))?.answer || "",
-          qualidade_sono: answers.find(a => a.question.includes("dormir"))?.answer || ""
+          atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade física"))?.answer || "",
+          padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("hábitos alimentares"))?.answer || "",
+          qualidade_sono: answers.find(a => a.question.toLowerCase().includes("sono"))?.answer || ""
         },
-        elegivel_tratamento: true
+        elegivel_tratamento: true,
+        tratamentos_indicados: [{
+          nome: answer.split(" - ")[0],
+          preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
+          descricao: answer
+        }]
       };
 
       const treatmentSummary: Question = {
         pergunta: "Resumo do tratamento selecionado",
         "last_step": "true",
-        "summary": {
-          ...currentSummary,
-          tratamentos_indicados: [{
-            nome: answer.split(" - ")[0],
-            preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
-            descricao: answer
-          }]
-        }
+        "summary": currentSummary
       };
       setCurrentQuestion(treatmentSummary);
       return;
@@ -382,7 +373,7 @@ function WeightLossScreening() {
         setCurrentQuestion(nextQuestion);
         setTextInput('');
       } else {
-        const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+        const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === currentQuestion.pergunta);
         if (currentIndex < fallbackChain.length - 1) {
           setCurrentQuestion(fallbackChain[currentIndex + 1]);
           setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
@@ -412,7 +403,7 @@ function WeightLossScreening() {
   const renderSummary = () => {
     if (!currentQuestion.summary) return null;
     
-    const { dados_basicos, dados_pessoais, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
+    const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
     
     return (
       <div className="space-y-4">
@@ -425,14 +416,6 @@ function WeightLossScreening() {
           <p>Altura: {dados_basicos.altura} cm</p>
           <p>IMC: {dados_basicos.imc}</p>
         </div>
-
-        {dados_pessoais && (
-          <div className="bg-gray-50 p-4 rounded">
-            <h4 className="font-semibold mb-2">Dados Pessoais</h4>
-            <p>Nome: {dados_pessoais.nome} {dados_pessoais.sobrenome}</p>
-            <p>Endereço: {dados_pessoais.endereco}</p>
-          </div>
-        )}
 
         {contraindicacoes.length > 0 && (
           <div className="bg-red-50 p-4 rounded">
@@ -489,6 +472,14 @@ function WeightLossScreening() {
                 <p>{tratamento.descricao}</p>
               </div>
             ))}
+            {!showPersonalDataForm && (
+              <button
+                onClick={() => setShowPersonalDataForm(true)}
+                className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
+              >
+                Entender Tratamento
+              </button>
+            )}
           </div>
         )}
       </div>
