@@ -66,14 +66,36 @@ export default async (request: Request, context: Context) => {
     // Remover possíveis marcadores de código e espaços em branco
     responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
     console.log('Texto após limpeza:', responseText);
+
+    // Função para extrair o primeiro objeto JSON válido de uma string
+    const extractFirstJsonObject = (text: string): string => {
+      let depth = 0;
+      let start = text.indexOf('{');
+      if (start === -1) return '';
+
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === '{') depth++;
+        if (text[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            return text.substring(start, i + 1);
+          }
+        }
+      }
+      return '';
+    };
+    
+    // Extrair o primeiro objeto JSON válido
+    const firstJsonObject = extractFirstJsonObject(responseText);
+    console.log('Primeiro objeto JSON extraído:', firstJsonObject);
     
     // Tentar parsear para garantir que é um JSON válido
     try {
-      const parsedJson = JSON.parse(responseText);
+      const parsedJson = JSON.parse(firstJsonObject);
       console.log('JSON parseado com sucesso:', parsedJson);
 
       // Verificar se tem as propriedades necessárias
-      if (!parsedJson.pergunta || !Array.isArray(parsedJson.opcoes)) {
+      if (!parsedJson.pergunta || (!parsedJson["did-you-know"] && !Array.isArray(parsedJson.opcoes))) {
         throw new Error('JSON não contém as propriedades necessárias');
       }
 
@@ -82,7 +104,7 @@ export default async (request: Request, context: Context) => {
         content: [{
           type: 'text',
           text: {
-            value: responseText,
+            value: firstJsonObject,
             annotations: []
           }
         }]
@@ -97,13 +119,14 @@ export default async (request: Request, context: Context) => {
       })
     } catch (error) {
       console.error('Erro ao parsear JSON:', error);
-      console.error('Texto que causou o erro:', responseText);
+      console.error('Texto que causou o erro:', firstJsonObject);
       
       // Retornar erro com mais detalhes
       return new Response(JSON.stringify({ 
         error: 'Internal server error',
         details: 'Erro ao parsear resposta do Claude',
         rawResponse: responseText,
+        firstJsonObject,
         parseError: error instanceof Error ? error.message : 'Unknown parse error'
       }), {
         status: 500,
