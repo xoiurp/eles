@@ -41,107 +41,124 @@ export default async (request: Request, context: Context) => {
           role: msg.role,
           content: msg.content
         })),
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 4000
       })
     })
+
+    if (!response.ok) {
+      const errorData = await response.text()
+      console.error('Erro na resposta da Openrouter:', errorData)
+      throw new Error(`Openrouter API error: ${errorData}`)
+    }
 
     const data = await response.json()
     console.log('Resposta da Openrouter:', JSON.stringify(data, null, 2))
 
-    // Verificar se há erro na resposta
-    if (!response.ok) {
-      throw new Error(`Openrouter API error: ${JSON.stringify(data)}`)
-    }
-
     // Verificar se a resposta tem o formato esperado
     if (!data.choices?.[0]?.message?.content) {
-      console.error('Resposta inesperada da Openrouter:', data);
-      throw new Error(`Resposta em formato inválido: ${JSON.stringify(data)}`);
+      console.error('Resposta inesperada da Openrouter:', data)
+      throw new Error('Resposta em formato inválido')
     }
 
     // Extrair e limpar o texto da resposta
-    let responseText = data.choices[0].message.content;
-    console.log('Texto original da resposta:', responseText);
+    let responseText = data.choices[0].message.content
+    console.log('Texto original da resposta:', responseText)
     
     // Remover possíveis marcadores de código e espaços em branco
-    responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
-    console.log('Texto após limpeza:', responseText);
+    responseText = responseText.replace(/```json\s*|\s*```/g, '').trim()
+    console.log('Texto após limpeza:', responseText)
 
     // Função para extrair o primeiro objeto JSON válido
     const extractFirstJsonObject = (text: string): string => {
-      let depth = 0;
-      let start = text.indexOf('{');
-      if (start === -1) return '';
+      try {
+        // Primeiro, tenta parsear o texto inteiro
+        JSON.parse(text)
+        return text
+      } catch {
+        // Se falhar, tenta extrair o primeiro objeto JSON válido
+        let depth = 0
+        let start = text.indexOf('{')
+        if (start === -1) {
+          console.error('Nenhum objeto JSON encontrado no texto:', text)
+          throw new Error('Nenhum objeto JSON encontrado na resposta')
+        }
 
-      for (let i = start; i < text.length; i++) {
-        if (text[i] === '{') depth++;
-        if (text[i] === '}') {
-          depth--;
-          if (depth === 0) {
-            return text.substring(start, i + 1);
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === '{') depth++
+          if (text[i] === '}') {
+            depth--
+            if (depth === 0) {
+              const jsonCandidate = text.substring(start, i + 1)
+              try {
+                // Verifica se é um JSON válido
+                JSON.parse(jsonCandidate)
+                return jsonCandidate
+              } catch {
+                continue // Se não for válido, continua procurando
+              }
+            }
           }
         }
+        throw new Error('Nenhum objeto JSON válido encontrado na resposta')
       }
-      return '';
-    };
-    
-    // Extrair o primeiro objeto JSON válido
-    const firstJsonObject = extractFirstJsonObject(responseText);
-    console.log('Primeiro objeto JSON extraído:', firstJsonObject);
-    
-    // Tentar parsear para garantir que é um JSON válido
-    try {
-      const parsedJson = JSON.parse(firstJsonObject);
-      console.log('JSON parseado com sucesso:', parsedJson);
-
-      // Verificar se tem as propriedades necessárias
-      if (!parsedJson.pergunta || (!parsedJson["did-you-know"] && !parsedJson["last_step"] && !parsedJson["input-text"] && !Array.isArray(parsedJson.opcoes))) {
-        throw new Error('JSON não contém as propriedades necessárias');
-      }
-
-      // Formatar a resposta final no formato esperado pelo componente
-      const formattedResponse = {
-        content: [{
-          type: 'text',
-          text: {
-            value: firstJsonObject,
-            annotations: []
-          }
-        }]
-      }
-
-      return new Response(JSON.stringify(formattedResponse), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      })
-    } catch (error) {
-      console.error('Erro ao parsear JSON:', error);
-      console.error('Texto que causou o erro:', firstJsonObject);
-      
-      // Retornar erro com mais detalhes
-      return new Response(JSON.stringify({ 
-        error: 'Internal server error',
-        details: 'Erro ao parsear resposta do Claude',
-        rawResponse: responseText,
-        firstJsonObject,
-        parseError: error instanceof Error ? error.message : 'Unknown parse error'
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      })
     }
+    
+    // Extrair e validar o JSON
+    const firstJsonObject = extractFirstJsonObject(responseText)
+    console.log('JSON extraído:', firstJsonObject)
+    
+    // Parsear e validar a estrutura
+    const parsedJson = JSON.parse(firstJsonObject)
+    console.log('JSON parseado:', parsedJson)
+
+    // Validação mais detalhada da estrutura
+    if (!parsedJson.pergunta) {
+      throw new Error('JSON não contém a propriedade obrigatória "pergunta"')
+    }
+
+    // Validar que pelo menos uma das propriedades necessárias está presente
+    const hasValidStructure = 
+      parsedJson["did-you-know"] !== undefined ||
+      parsedJson["last_step"] !== undefined ||
+      parsedJson["input-text"] !== undefined ||
+      Array.isArray(parsedJson.opcoes)
+
+    if (!hasValidStructure) {
+      console.error('Estrutura JSON inválida:', parsedJson)
+      throw new Error('JSON não contém uma estrutura válida para pergunta')
+    }
+
+    // Formatar a resposta final
+    const formattedResponse = {
+      content: [{
+        type: 'text',
+        text: {
+          value: firstJsonObject,
+          annotations: []
+        }
+      }]
+    }
+
+    return new Response(JSON.stringify(formattedResponse), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    })
   } catch (error) {
     console.error('Erro na função:', error)
-    return new Response(JSON.stringify({ 
+    
+    // Criar uma resposta de erro mais detalhada
+    const errorResponse = {
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      path: request.url
+    }
+
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',

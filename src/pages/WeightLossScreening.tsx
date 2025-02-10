@@ -1,4 +1,26 @@
 import React, { useState } from 'react';
+import { WEIGHT_LOSS_SYSTEM_PROMPT } from '../constants/prompts';
+
+interface DadosBasicos {
+  idade: number;
+  peso: number;
+  altura: number;
+  imc: number;
+}
+
+interface EstiloVida {
+  atividade_fisica: string;
+  padrao_alimentar: string;
+  qualidade_sono: string;
+}
+
+interface Summary {
+  dados_basicos: DadosBasicos;
+  contraindicacoes: string[];
+  condicoes_relevantes: string[];
+  estilo_vida: EstiloVida;
+  elegivel_tratamento: boolean;
+}
 
 interface Question {
   pergunta: string;
@@ -6,6 +28,10 @@ interface Question {
   "did-you-know"?: boolean;
   "last_step"?: string;
   "input-text"?: boolean;
+  "is_red_flag"?: boolean;
+  "red_flag_value"?: string;
+  "red_flags_detected"?: boolean;
+  "summary"?: Summary;
 }
 
 interface Message {
@@ -16,136 +42,37 @@ interface Message {
 interface Answer {
   question: string;
   answer: string;
+  isRedFlag?: boolean;
 }
 
 const fallbackChain: Question[] = [
   {
-    pergunta: "Qual é o seu objetivo no emagrecimento?",
-    opcoes: [
-      "Perder entre 1 e 7 kg",
-      "Perder entre 7 e 20 kg",
-      "Perder mais do que 20 kg",
-      "Não tenho certeza! Preciso apenas emagrecer"
-    ]
+    pergunta: "Qual é a sua idade?",
+    "input-text": true,
+    "is_red_flag": true,
+    "red_flag_value": "< 18"
   },
   {
-    pergunta: "Qual sua frequência de atividade física semanal?",
-    opcoes: ["Nenhuma", "1-2 vezes", "3-4 vezes", "5 ou mais vezes"]
+    pergunta: "Qual é o seu peso atual (em kg)?",
+    "input-text": true
   },
   {
-    pergunta: "Como você descreveria seus hábitos alimentares atuais?",
-    opcoes: [
-      "Como de forma desregrada",
-      "Como regularmente, mas não controlo porções",
-      "Sigo uma dieta específica",
-      "Tenho restrições alimentares"
-    ]
+    pergunta: "Qual é a sua altura (em cm)?",
+    "input-text": true
   },
   {
-    pergunta: "Quantas horas você costuma dormir por noite?",
-    opcoes: [
-      "Menos de 6 horas",
-      "6-7 horas",
-      "7-8 horas",
-      "Mais de 8 horas"
-    ]
+    pergunta: "Você tem histórico de transtornos alimentares?",
+    opcoes: ["Sim", "Não"],
+    "is_red_flag": true,
+    "red_flag_value": "Sim"
   },
   {
-    pergunta: "Você tem alguma condição médica que afete seu peso?",
-    opcoes: [
-      "Não tenho nenhuma condição",
-      "Sim, problemas na tireoide",
-      "Sim, diabetes",
-      "Sim, outras condições"
-    ],
-    "last_step": "true"
+    pergunta: "Você está grávida ou amamentando?",
+    opcoes: ["Sim", "Não"],
+    "is_red_flag": true,
+    "red_flag_value": "Sim"
   }
 ];
-
-const SYSTEM_PROMPT = `Você é o assistente virtual de um centro médico especializado em programas de emagrecimento com supervisão médica. Seu papel é realizar a triagem inicial dos pacientes, coletando informações cruciais para avaliar a adequação dos tratamentos oferecidos.
-
-INSTRUÇÕES:
-
-1. Ordem de Coleta de Dados:
-   Muito importante: Primeiro, colete os dados básicos do paciente nesta ordem:
-   - Idade
-   - Peso atual (em kg)
-   - Altura (em cm)
-   
-   Depois, prossiga com as outras informações.
-
-2. Fluxo de Perguntas e Fatos Curiosos:
-   - Faça 2 perguntas normais em sequência
-   - Após cada 2 perguntas, apresente um fato curioso relacionado às respostas anteriores
-   - Depois do fato curioso, continue com mais 3 perguntas
-   - IMPORTANTE: Retorne apenas UM objeto JSON por resposta
-
-3. Formato das Respostas:
-
-Para perguntas de múltipla escolha (use sempre que possível):
-{
-  "pergunta": "Sua pergunta aqui",
-  "opcoes": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"]
-}
-
-Para perguntas que precisam de dados numéricos (idade, peso, altura):
-{
-  "pergunta": "Qual é a sua idade?",
-  "input-text": true
-}
-
-Para perguntas de detalhamento (use APENAS após uma resposta positiva em múltipla escolha):
-Exemplo:
-1. Primeiro pergunte: "Você faz uso de algum medicamento?"
-   {
-     "pergunta": "Você faz uso de algum medicamento?",
-     "opcoes": ["Sim", "Não"]
-   }
-
-2. Se a resposta for "Sim", então peça detalhes:
-   {
-     "pergunta": "Por favor, liste os medicamentos que você utiliza:",
-     "input-text": true
-   }
-
-Para fatos curiosos (use após cada 4 perguntas):
-{
-  "pergunta": "Fato interessante baseado nas respostas anteriores",
-  "opcoes": [],
-  "did-you-know": true
-}
-
-Para finalizar:
-{
-  "pergunta": "Mensagem de agradecimento",
-  "opcoes": [],
-  "last_step": "true"
-}
-
-4. Informações a Coletar:
-- Dados básicos (idade, peso, altura)
-- Objetivo no emagrecimento
-- Histórico de tentativas de perda de peso
-- Condições médicas relevantes
-- Uso atual de medicamentos (use múltipla escolha + input-text se necessário)
-- Histórico familiar
-- Nível de atividade física
-- Hábitos alimentares
-- Expectativas quanto ao tratamento
-- Preocupações sobre medicamentos
-
-5. Regras Importantes:
-- Comece SEMPRE com idade, peso e altura
-- Use preferencialmente perguntas de múltipla escolha
-- Use input-text APENAS para:
-  * Dados numéricos (idade, peso, altura)
-  * Detalhamento após resposta "Sim" em perguntas de múltipla escolha
-- Não repita perguntas já feitas
-- Atue como um profissional de saúde experiente
-- Baseie os fatos curiosos nas respostas anteriores do usuário
-- Retorne apenas UM objeto JSON por resposta, sem texto adicional
-
-IMPORTANTE: Retorne apenas UM objeto JSON por resposta, sem texto adicional.`;
 
 function WeightLossScreening() {
   const [currentQuestion, setCurrentQuestion] = useState<Question>(fallbackChain[0]);
@@ -156,6 +83,13 @@ function WeightLossScreening() {
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [textInput, setTextInput] = useState<string>('');
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [hasRedFlags, setHasRedFlags] = useState<boolean>(false);
+  const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
+
+  const calculateIMC = (peso: number, altura: number): number => {
+    const alturaMetros = altura / 100;
+    return Number((peso / (alturaMetros * alturaMetros)).toFixed(1));
+  };
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
@@ -166,22 +100,59 @@ function WeightLossScreening() {
     setIsLoading(true);
     setError(null);
     try {
+      // Processar dados básicos se necessário
+      if (currentQuestion["input-text"]) {
+        const numericAnswer = parseFloat(answer);
+        if (currentQuestion.pergunta.includes("idade")) {
+          if (numericAnswer < 18) {
+            setHasRedFlags(true);
+          }
+          setDadosBasicos(prev => ({ ...prev, idade: numericAnswer }));
+        } else if (currentQuestion.pergunta.includes("peso")) {
+          setDadosBasicos(prev => ({ ...prev, peso: numericAnswer }));
+        } else if (currentQuestion.pergunta.includes("altura")) {
+          const altura = numericAnswer;
+          setDadosBasicos(prev => {
+            const newDados = { ...prev, altura };
+            if (newDados.peso) {
+              newDados.imc = calculateIMC(newDados.peso, altura);
+              // Verificar IMC como red flag
+              if (newDados.imc < 30) {
+                setHasRedFlags(true);
+              }
+            }
+            return newDados;
+          });
+        }
+      }
+
+      // Verificar red flags nas respostas de múltipla escolha
+      if (currentQuestion.is_red_flag && answer === currentQuestion.red_flag_value) {
+        setHasRedFlags(true);
+      }
+
       // Adicionar a resposta atual ao histórico
-      const newAnswers = [...answers, { question: currentQuestion.pergunta, answer }];
+      const newAnswers = [...answers, { 
+        question: currentQuestion.pergunta, 
+        answer,
+        isRedFlag: currentQuestion.is_red_flag && answer === currentQuestion.red_flag_value
+      }];
       setAnswers(newAnswers);
 
       const updatedMessages: Message[] = [
-        { role: 'user', content: SYSTEM_PROMPT },
+        { role: 'user', content: WEIGHT_LOSS_SYSTEM_PROMPT },
         ...messages,
         { 
           role: 'user', 
           content: `Histórico completo de perguntas e respostas:
           ${newAnswers.map(a => `Pergunta: ${a.question}
-          Resposta: ${a.answer}`).join('\n')}
+          Resposta: ${a.answer}${a.isRedFlag ? ' (RED FLAG DETECTADA)' : ''}`).join('\n')}
           
           Perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
-          Número de perguntas feitas desde o último fato curioso: ${questionCount % 2}
+          Número de perguntas feitas desde o último fato curioso: ${questionCount % 3}
+          Dados básicos coletados: ${JSON.stringify(dadosBasicos)}
+          Red flags detectadas: ${hasRedFlags}
           
           IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 2 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores. Após o fato curioso, continue o fluxo de perguntas normalmente.` 
         }
@@ -219,7 +190,6 @@ function WeightLossScreening() {
       console.log('Mensagem do assistente:', assistantMessage);
 
       try {
-        // Remover possíveis caracteres extras ou quebras de linha
         const cleanJson = assistantMessage.trim().replace(/```json\n?|\n?```/g, '');
         console.log('JSON limpo:', cleanJson);
 
@@ -233,11 +203,10 @@ function WeightLossScreening() {
             { role: 'assistant', content: assistantMessage }
           ]);
 
-          // Atualizar contador de perguntas apenas para perguntas normais (não fatos curiosos)
           if (!parsed["did-you-know"]) {
             setQuestionCount(prev => prev + 1);
           } else {
-            setQuestionCount(0); // Resetar contador após mostrar fato curioso
+            setQuestionCount(0);
           }
 
           return parsed;
@@ -252,8 +221,6 @@ function WeightLossScreening() {
         setError(`Erro ao processar resposta do Claude: ${parseError instanceof Error ? parseError.message : 'Erro desconhecido'}`);
         throw parseError;
       }
-      
-      return null;
     } catch (error) {
       console.error("Erro ao obter próxima pergunta:", error);
       setError(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -268,7 +235,7 @@ function WeightLossScreening() {
       const nextQuestion = await getNextQuestionFromClaude(answer);
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
-        setTextInput(''); // Limpar input de texto ao mudar de pergunta
+        setTextInput('');
       } else {
         const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
         if (currentIndex < fallbackChain.length - 1) {
@@ -294,8 +261,65 @@ function WeightLossScreening() {
   };
 
   const handleContinue = () => {
-    // Tratar o botão "Continuar" como uma resposta normal
     handleOptionSelect("Entendi");
+  };
+
+  const renderSummary = () => {
+    if (!currentQuestion.summary) return null;
+    
+    const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento } = currentQuestion.summary;
+    
+    return (
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold">Resumo da Triagem</h3>
+        
+        <div className="bg-gray-50 p-4 rounded">
+          <h4 className="font-semibold mb-2">Dados Básicos</h4>
+          <p>Idade: {dados_basicos.idade} anos</p>
+          <p>Peso: {dados_basicos.peso} kg</p>
+          <p>Altura: {dados_basicos.altura} cm</p>
+          <p>IMC: {dados_basicos.imc}</p>
+        </div>
+
+        {contraindicacoes.length > 0 && (
+          <div className="bg-red-50 p-4 rounded">
+            <h4 className="font-semibold mb-2 text-red-700">Contraindicações Identificadas</h4>
+            <ul className="list-disc pl-5">
+              {contraindicacoes.map((item, index) => (
+                <li key={index} className="text-red-600">{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {condicoes_relevantes.length > 0 && (
+          <div className="bg-yellow-50 p-4 rounded">
+            <h4 className="font-semibold mb-2">Condições Relevantes</h4>
+            <ul className="list-disc pl-5">
+              {condicoes_relevantes.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="bg-gray-50 p-4 rounded">
+          <h4 className="font-semibold mb-2">Estilo de Vida</h4>
+          <p>Atividade Física: {estilo_vida.atividade_fisica}</p>
+          <p>Padrão Alimentar: {estilo_vida.padrao_alimentar}</p>
+          <p>Qualidade do Sono: {estilo_vida.qualidade_sono}</p>
+        </div>
+
+        <div className={`p-4 rounded ${elegivel_tratamento ? 'bg-green-50' : 'bg-red-50'}`}>
+          <h4 className="font-semibold mb-2">Conclusão</h4>
+          <p className={elegivel_tratamento ? 'text-green-700' : 'text-red-700'}>
+            {elegivel_tratamento 
+              ? 'Elegível para o programa de emagrecimento.' 
+              : 'Não elegível para o programa de emagrecimento neste momento.'}
+          </p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -313,7 +337,9 @@ function WeightLossScreening() {
                 {error}
               </div>
             )}
-            {currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
+            {currentQuestion["last_step"] === "true" ? (
+              renderSummary()
+            ) : currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <>
                 <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
                 <div className="space-y-3">
@@ -332,11 +358,11 @@ function WeightLossScreening() {
               <>
                 <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
-                  <textarea
+                  <input
+                    type="number"
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    className="w-full p-2 border rounded resize-none"
-                    rows={4}
+                    className="w-full p-2 border rounded"
                     placeholder="Digite sua resposta aqui..."
                   />
                   <button
@@ -363,8 +389,6 @@ function WeightLossScreening() {
                   Continuar
                 </button>
               </div>
-            ) : currentQuestion["last_step"] === "true" ? (
-              <p className="mt-4 font-semibold">{currentQuestion.pergunta}</p>
             ) : null}
           </>
         )}
