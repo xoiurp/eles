@@ -101,6 +101,7 @@ function WeightLossScreening() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set([fallbackChain[0].pergunta]));
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
@@ -109,6 +110,7 @@ function WeightLossScreening() {
 
   const getNextQuestionFromClaude = async (answer: string): Promise<Question | null> => {
     setIsLoading(true);
+    setError(null);
     try {
       const updatedMessages: Message[] = [
         { role: 'user', content: SYSTEM_PROMPT },
@@ -132,13 +134,16 @@ function WeightLossScreening() {
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Erro na resposta do Claude:', errorData);
-        throw new Error(`Falha na comunicação com o Claude: ${JSON.stringify(errorData)}`);
+        console.error('Erro na resposta do Claude:', data);
+        if (data.rawResponse) {
+          console.error('Resposta raw do Claude:', data.rawResponse);
+        }
+        throw new Error(data.details || 'Falha na comunicação com o Claude');
       }
 
-      const data = await response.json();
       console.log('Resposta recebida do Claude:', JSON.stringify(data, null, 2));
 
       if (!data.content?.[0]?.text?.value) {
@@ -165,16 +170,20 @@ function WeightLossScreening() {
           return parsed;
         } else {
           console.log('Pergunta já feita:', parsed.pergunta);
+          setError('O Claude tentou fazer uma pergunta repetida. Tentando novamente...');
+          return null;
         }
       } catch (parseError) {
         console.error("Erro ao parsear resposta do Claude:", parseError);
         console.error("Conteúdo que causou o erro:", assistantMessage);
+        setError(`Erro ao processar resposta do Claude: ${parseError instanceof Error ? parseError.message : 'Erro desconhecido'}`);
         throw parseError;
       }
       
       return null;
     } catch (error) {
       console.error("Erro ao obter próxima pergunta:", error);
+      setError(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       return null;
     } finally {
       setIsLoading(false);
@@ -221,6 +230,11 @@ function WeightLossScreening() {
           </div>
         ) : (
           <>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                {error}
+              </div>
+            )}
             <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
             {currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <div className="space-y-3">

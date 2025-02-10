@@ -53,38 +53,66 @@ export default async (request: Request, context: Context) => {
       throw new Error(`Claude API error: ${JSON.stringify(data)}`)
     }
 
+    // Verificar se a resposta tem o formato esperado
+    if (!data.content?.[0]?.text) {
+      console.error('Resposta inesperada do Claude:', data);
+      throw new Error(`Resposta em formato inválido: ${JSON.stringify(data)}`);
+    }
+
     // Extrair e limpar o texto da resposta
-    let responseText = data.content?.[0]?.text || '';
+    let responseText = data.content[0].text;
+    console.log('Texto original da resposta:', responseText);
     
     // Remover possíveis marcadores de código e espaços em branco
     responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
+    console.log('Texto após limpeza:', responseText);
     
     // Tentar parsear para garantir que é um JSON válido
     try {
-      JSON.parse(responseText);
-    } catch (error) {
-      console.error('JSON inválido recebido do Claude:', responseText);
-      throw new Error('Resposta inválida do Claude');
-    }
+      const parsedJson = JSON.parse(responseText);
+      console.log('JSON parseado com sucesso:', parsedJson);
 
-    // Formatar a resposta final
-    const formattedResponse = {
-      content: [{
-        type: 'text',
-        text: {
-          value: responseText,
-          annotations: []
-        }
-      }]
-    }
-
-    return new Response(JSON.stringify(formattedResponse), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
+      // Verificar se tem as propriedades necessárias
+      if (!parsedJson.pergunta || !Array.isArray(parsedJson.opcoes)) {
+        throw new Error('JSON não contém as propriedades necessárias');
       }
-    })
+
+      // Formatar a resposta final
+      const formattedResponse = {
+        content: [{
+          type: 'text',
+          text: {
+            value: responseText,
+            annotations: []
+          }
+        }]
+      }
+
+      return new Response(JSON.stringify(formattedResponse), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      })
+    } catch (error) {
+      console.error('Erro ao parsear JSON:', error);
+      console.error('Texto que causou o erro:', responseText);
+      
+      // Retornar erro com mais detalhes
+      return new Response(JSON.stringify({ 
+        error: 'Internal server error',
+        details: 'Erro ao parsear resposta do Claude',
+        rawResponse: responseText,
+        parseError: error instanceof Error ? error.message : 'Unknown parse error'
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      })
+    }
   } catch (error) {
     console.error('Erro na função:', error)
     return new Response(JSON.stringify({ 
