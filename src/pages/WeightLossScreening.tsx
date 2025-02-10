@@ -295,7 +295,7 @@ function WeightLossScreening() {
 
   const handleContinue = () => {
     // Tratar o botão "Continuar" como uma resposta normal
-    handleOptionSelect("Entendi o fato curioso: " + currentQuestion.pergunta);
+    handleOptionSelect("Entendi");
   };
 
   return (
@@ -313,39 +313,47 @@ function WeightLossScreening() {
                 {error}
               </div>
             )}
-            <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
             {currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
-              <div className="space-y-3">
-                {currentQuestion.opcoes.map((opcao, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleOptionSelect(opcao)}
-                    className="w-full text-left border rounded p-2 hover:bg-rose-100"
-                  >
-                    {opcao}
-                  </button>
-                ))}
-              </div>
+              <>
+                <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
+                <div className="space-y-3">
+                  {currentQuestion.opcoes.map((opcao, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleOptionSelect(opcao)}
+                      className="w-full text-left border rounded p-2 hover:bg-rose-100"
+                    >
+                      {opcao}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : currentQuestion["input-text"] ? (
-              <form onSubmit={handleTextSubmit} className="space-y-3">
-                <textarea
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  className="w-full p-2 border rounded resize-none"
-                  rows={4}
-                  placeholder="Digite sua resposta aqui..."
-                />
-                <button
-                  type="submit"
-                  className="w-full bg-rose-500 text-white px-4 py-2 rounded"
-                  disabled={!textInput.trim()}
-                >
-                  Enviar
-                </button>
-              </form>
+              <>
+                <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
+                <form onSubmit={handleTextSubmit} className="space-y-3">
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    className="w-full p-2 border rounded resize-none"
+                    rows={4}
+                    placeholder="Digite sua resposta aqui..."
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-rose-500 text-white px-4 py-2 rounded"
+                    disabled={!textInput.trim()}
+                  >
+                    Enviar
+                  </button>
+                </form>
+              </>
             ) : currentQuestion["did-you-know"] ? (
               <div>
                 <p className="mt-4 italic text-gray-500">
+                  Você sabia?
+                </p>
+                <p className="mt-2 text-lg">
                   {currentQuestion.pergunta}
                 </p>
                 <button
@@ -356,7 +364,7 @@ function WeightLossScreening() {
                 </button>
               </div>
             ) : currentQuestion["last_step"] === "true" ? (
-              <p className="mt-4 font-semibold">Obrigado por responder todas as questões!</p>
+              <p className="mt-4 font-semibold">{currentQuestion.pergunta}</p>
             ) : null}
           </>
         )}
