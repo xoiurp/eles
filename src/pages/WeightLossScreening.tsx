@@ -60,42 +60,58 @@ const fallbackChain: Question[] = [
 const SYSTEM_PROMPT = `Você é o assistente virtual de um centro médico especializado em programas de emagrecimento com supervisão médica. Seu papel é realizar a triagem inicial dos pacientes, coletando informações cruciais para avaliar a adequação dos tratamentos oferecidos.
 
 INSTRUÇÕES:
-- Não repita perguntas já feitas
-- Atue como um profissional de saúde experiente
-- Colete informações através de perguntas de múltipla escolha e só use a chave "input_text" = "true" caso precise de detalhes sobre altura, peso ou medicações.
-- IMPORTANTE: Retorne apenas UM objeto JSON por resposta
-- Se precisar incluir um fato curioso, faça isso em uma interação separada. O conteúdo do fato curioso deve ser algo baseado nas respostas passadas do usuário.
-- Retorne no formato:
 
-Para perguntas normais:
+1. Fluxo de Perguntas e Fatos Curiosos:
+   - Faça 2 perguntas normais em sequência
+   - Após cada 2 perguntas, apresente um fato curioso relacionado às respostas anteriores
+   - Depois do fato curioso, continue com mais 2 perguntas, e assim por diante
+   - IMPORTANTE: Retorne apenas UM objeto JSON por resposta
+
+2. Formato das Respostas:
+
+Para perguntas normais (use este formato para perguntas regulares):
 {
   "pergunta": "Sua pergunta aqui",
   "opcoes": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"]
 }
 
-Para fatos curiosos (em uma interação separada):
+Para fatos curiosos (use este formato após cada 2 perguntas):
 {
-  "pergunta": "Seu fato curioso aqui",
+  "pergunta": "Fato interessante baseado nas respostas anteriores",
   "opcoes": [],
   "did-you-know": true
 }
 
-Para finalizar:
+Para finalizar (use quando todas as informações forem coletadas):
 {
   "pergunta": "Mensagem de agradecimento",
   "opcoes": [],
   "last_step": "true"
 }
 
-Colete informações sobre:
-1. Histórico de tentativas de perda de peso
-2. Condições médicas relevantes
-3. Uso atual de medicamentos
-4. Histórico familiar
-5. Nível de atividade física
-6. Hábitos alimentares
-7. Expectativas quanto ao tratamento
-8. Preocupações sobre medicamentos
+3. Informações a Coletar:
+- Histórico de tentativas de perda de peso
+- Condições médicas relevantes
+- Uso atual de medicamentos
+- Histórico familiar
+- Nível de atividade física
+- Hábitos alimentares
+- Expectativas quanto ao tratamento
+- Preocupações sobre medicamentos
+
+4. Regras Importantes:
+- Não repita perguntas já feitas
+- Atue como um profissional de saúde experiente
+- Baseie os fatos curiosos nas respostas anteriores do usuário
+- Retorne apenas UM objeto JSON por resposta, sem texto adicional
+- Após mostrar um fato curioso, a próxima resposta deve ser uma nova pergunta
+
+Exemplo de Sequência:
+1. Primeira pergunta (JSON com pergunta e opções)
+2. Segunda pergunta (JSON com pergunta e opções)
+3. Fato curioso baseado nas duas respostas (JSON com did-you-know)
+4. Terceira pergunta (JSON com pergunta e opções)
+5. E assim por diante...
 
 IMPORTANTE: Retorne apenas UM objeto JSON por resposta, sem texto adicional.`;
 
@@ -105,6 +121,7 @@ function WeightLossScreening() {
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set([fallbackChain[0].pergunta]));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [questionCount, setQuestionCount] = useState<number>(0);
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
@@ -122,8 +139,9 @@ function WeightLossScreening() {
           role: 'user', 
           content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
+          Número de perguntas feitas desde o último fato curioso: ${questionCount % 2}
           
-          IMPORTANTE: Retorne apenas UM objeto JSON, sem texto adicional.` 
+          IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 2 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores.` 
         }
       ];
 
@@ -172,6 +190,14 @@ function WeightLossScreening() {
             { role: 'user', content: answer },
             { role: 'assistant', content: assistantMessage }
           ]);
+
+          // Atualizar contador de perguntas apenas para perguntas normais (não fatos curiosos)
+          if (!parsed["did-you-know"]) {
+            setQuestionCount(prev => prev + 1);
+          } else {
+            setQuestionCount(0); // Resetar contador após mostrar fato curioso
+          }
+
           return parsed;
         } else {
           console.log('Pergunta já feita:', parsed.pergunta);
@@ -256,7 +282,7 @@ function WeightLossScreening() {
             ) : currentQuestion["did-you-know"] ? (
               <div>
                 <p className="mt-4 italic text-gray-500">
-                  Dica: Sabia que manter pequenas mudanças diárias pode acelerar os resultados?
+                  {currentQuestion.pergunta}
                 </p>
                 <button
                   onClick={handleContinue}
