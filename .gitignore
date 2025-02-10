@@ -29,3 +29,6 @@ dist-ssr
 
 # History
 .history/
+
+# Local Netlify folder
+.netlify

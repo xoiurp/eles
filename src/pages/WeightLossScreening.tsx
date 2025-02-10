@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface Question {
   pergunta: string;
@@ -8,20 +8,9 @@ interface Question {
   "input-text"?: string;
 }
 
-interface RunStatus {
-  id: string;
-  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'expired';
-}
-
-interface AssistantMessage {
-  role: string;
-  content: Array<{
-    type: string;
-    text: {
-      value: string;
-      annotations: any[];
-    };
-  }>;
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 const fallbackChain: Question[] = [
@@ -68,259 +57,105 @@ const fallbackChain: Question[] = [
   }
 ];
 
+const SYSTEM_PROMPT = `Você é o assistente virtual de um centro médico especializado em programas de emagrecimento com supervisão médica. Seu papel é realizar a triagem inicial dos pacientes, coletando informações cruciais para avaliar a adequação dos tratamentos oferecidos.
+
+INSTRUÇÕES:
+- Não repita perguntas já feitas
+- Atue como um profissional de saúde experiente
+- Colete informações através de perguntas de múltipla escolha
+- A cada 2 perguntas, inclua um fato curioso sobre saúde
+- Retorne apenas JSON no formato:
+{
+  "pergunta": "Sua pergunta aqui",
+  "opcoes": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"]
+}
+
+Para fatos curiosos, use:
+{
+  "pergunta": "Seu fato curioso aqui",
+  "opcoes": [],
+  "did-you-know": true
+}
+
+Para finalizar use:
+{
+  "pergunta": "Mensagem de agradecimento",
+  "opcoes": [],
+  "last_step": "true"
+}
+
+Colete informações sobre:
+1. Histórico de tentativas de perda de peso
+2. Condições médicas relevantes
+3. Uso atual de medicamentos
+4. Histórico familiar
+5. Nível de atividade física
+6. Hábitos alimentares
+7. Expectativas quanto ao tratamento
+8. Preocupações sobre medicamentos
+
+IMPORTANTE: Retorne apenas o JSON, sem texto adicional.`;
+
 function WeightLossScreening() {
-  const [step, setStep] = useState<number>(0);
   const [currentQuestion, setCurrentQuestion] = useState<Question>(fallbackChain[0]);
-  const [answers, setAnswers] = useState<string[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set([fallbackChain[0].pergunta]));
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    // Adiciona a primeira pergunta ao histórico quando o componente é montado
-    setAskedQuestions(new Set([fallbackChain[0].pergunta]));
-  }, []);
+  // Determina o endpoint baseado no ambiente
+  const API_ENDPOINT = import.meta.env.PROD 
+    ? 'https://seu-site-netlify.netlify.app/.netlify/functions/claude-proxy'
+    : '/.netlify/functions/claude-proxy';
 
-  // Função auxiliar para fazer requisições através do proxy
-  const proxyFetch = async (path: string, method: string = 'POST', body?: any, headers: any = {}) => {
+  const getNextQuestionFromClaude = async (answer: string): Promise<Question | null> => {
+    setIsLoading(true);
     try {
-      const response = await fetch('/.netlify/functions/openai-proxy', {
+      const updatedMessages: Message[] = [
+        { role: 'user', content: SYSTEM_PROMPT },
+        ...messages,
+        { 
+          role: 'user', 
+          content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
+          Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.` 
+        }
+      ];
+
+      const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          path,
-          method,
-          body,
-          headers
+          messages: updatedMessages
         })
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('Falha na comunicação com o Claude');
       }
 
-      return response.json();
-    } catch (error) {
-      console.error("Erro no proxyFetch:", error);
-      throw error;
-    }
-  };
+      const data = await response.json();
+      const assistantMessage = data.content[0].text;
 
-  // Função para aguardar o run completar
-  const waitForRunCompletion = async (thread: string, runId: string): Promise<boolean> => {
-    const maxAttempts = 30;
-    const delayMs = 1000;
-    let attempts = 0;
-
-    while (attempts < maxAttempts) {
       try {
-        const status = await checkRunStatus(thread, runId);
-        console.log(`Tentativa ${attempts + 1}: Status do run:`, status?.status);
+        const parsed = JSON.parse(assistantMessage) as Question;
         
-        if (!status) return false;
-
-        if (status.status === 'completed') {
-          return true;
-        } else if (status.status === 'failed' || status.status === 'cancelled' || status.status === 'expired') {
-          return false;
+        if (!askedQuestions.has(parsed.pergunta)) {
+          setAskedQuestions(prev => new Set([...prev, parsed.pergunta]));
+          setMessages(prev => [...prev, 
+            { role: 'user', content: answer },
+            { role: 'assistant', content: assistantMessage }
+          ]);
+          return parsed;
         }
-
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        attempts++;
-      } catch (error) {
-        console.error(`Erro na tentativa ${attempts + 1}:`, error);
-        return false;
+      } catch (parseError) {
+        console.error("Erro ao parsear resposta do Claude:", parseError);
       }
-    }
-
-    return false;
-  };
-
-  // Cria um thread se não existir
-  const createThread = async (): Promise<string | null> => {
-    try {
-      const data = await proxyFetch('/threads');
-      console.log("Thread criado:", data);
-      return data.id;
-    } catch (error) {
-      console.error("Erro ao criar thread:", error);
-      return null;
-    }
-  };
-
-  // Adiciona uma mensagem do usuário ao thread
-  const addMessage = async (thread: string, answer: string): Promise<boolean> => {
-    try {
-      const data = await proxyFetch(`/threads/${thread}/messages`, 'POST', {
-        role: "user",
-        content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
-          Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
-          
-          Exemplo de resposta esperada:
-          {
-            "pergunta": "Qual sua frequência de atividade física semanal?",
-            "opcoes": ["Nenhuma", "1-2 vezes", "3-4 vezes", "5 ou mais vezes"]
-          }`
-      });
-
-      console.log("Mensagem adicionada:", data);
-      return !data.error;
-    } catch (error) {
-      console.error("Erro ao adicionar mensagem:", error);
-      return false;
-    }
-  };
-
-  // Cria um Run para processar a thread
-  const runAssistant = async (thread: string): Promise<string | null> => {
-    try {
-      const data = await proxyFetch(`/threads/${thread}/runs`, 'POST', {
-        assistant_id: "asst_zkToAVTPc27XnTAvV5rCFPvv",
-        instructions: `Você é o assistente virtual de um centro médico especializado em programas de emagrecimento com supervisão médica. Seu papel é   realizar a triagem inicial dos pacientes, coletando informações cruciais para avaliar a adequação dos tratamentos oferecidos.
-          INSTRUÇÕES:
-          Não repita as perguntas.
-          Atue como um profissional de saúde experiente, especializado em tratamentos para emagrecimento.
-          Seu objetivo principal é coletar informações relevantes dos usuários através de perguntas de múltipla escolha.
-
-          A interação se iniciará sempre com a resposta para a primeira pergunta fixada que é:
-          "Qual é o seu objetivo no emagrecimento?"
-          Você então deverá receber alguma das opções: Perder entre 1 e 7 kg, Perder entre 7 e 20 kg, Perder mais do que 20 kg ou Não tenho certeza! Preciso apenas emagrecer.
-
-          Dada a interação acima inicie a coleta de informações abaixo:
-
-          1. Histórico de tentativas anteriores de perda de peso
-          2. Presença de condições médicas relevantes
-          3. Uso atual de medicamentos
-          4. Histórico familiar de obesidade ou doenças relacionadas
-          5. Nível de atividade física
-          6. Hábitos alimentares
-          7. Expectativas quanto ao tratamento
-          8. Preocupações sobre o uso de medicamentos para emagrecimento
-
-          Não repita as perguntas.
-
-          Você deve identificar cada resposta, de cada etapa, no formato múltipla escolha passando em formato Json a pergunta com a key “pergunta” e as respostas curtas em formato múltipla escolha com a key “opcoes”. 
-
-          IMPORTANTE: Ao longo da jornada de perguntas é interessante criar valor e informar o usuário sobre fatos curiosos relacionados ao caso dele. Para isso, a cada 2 perguntas cite um fato interessante  sem fazer pergunta alguma e que tenha relação às respostas do caso usando key "pergunta" para isso, deixe a key de "opcoes" vazia e inclua também uma nova key "did-you-know" com valor "true" na resposta. Nesse caso não faça nenhuma pergunta, apenas cite a curiosidade. Se preciso use a custom tool do Brave Search para realizar uma pesquisa mais aprofundada.
-
-          A interface que receberá esse Json será responsável por dispor visualmente suas indagações. 
-          Não repita as perguntas.
-          Só termine o processo de questionário quando as premissas de onboarding forem todas respondidas a fim de coletar tais informações acima.
-
-          Caso a pergunta exija dados mais específicos a serem informados inclua a key "input_text" com valor "true". Dessa maneira o usuário poderá informar em um campo de texto informações não contidas nas alternativas em multipla escolha.
-
-          Quando considerar que todas as informações contidas em premissas já tenham sido respondidas, agradeça ao usuário por responder as questões usando a key de “pergunta” para isso, deixe os campos de opcoes vazio e inclua uma nova key “last_step” com valor “true”.
-
-          Responda somente em formato Json com a key “pergunta” e as respostas curtas em formato múltipla escolha com a key “opcoes”. Quando precisar que o usuário digite uma resposta, como por exemplo na coleta de dados para o IMC, adicione ao Json a chave "input-text" com valor "true".
-
-          MUITO IMPORTANTE: Não repita as perguntas.
-          Mantenha um tom profissional e empático em todas as interações.
-
-          
-          Não repita as seguintes perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
-          A cada 2 perguntas, inclua um fato curioso com a flag 'did-you-know': true.
-          Quando precisar que o usuário digite uma resposta, adicione ao Json a chave 'input-text' com valor 'true'.
-          IMPORTANTE: Retorne apenas o JSON, sem nenhum texto adicional.`
-      });
-
-      console.log("Run criado:", data);
-      if (data.id && !data.error) {
-        return data.id;
-      }
-      return null;
-    } catch (error) {
-      console.error("Erro ao executar o run:", error);
-      return null;
-    }
-  };
-
-  // Verifica o status do run
-  const checkRunStatus = async (thread: string, runId: string): Promise<RunStatus | null> => {
-    try {
-      const data = await proxyFetch(`/threads/${thread}/runs/${runId}`, 'GET');
-      return data;
-    } catch (error) {
-      console.error("Erro ao verificar status do run:", error);
-      return null;
-    }
-  };
-
-  // Busca as mensagens do thread e extrai a última mensagem do assistente
-  const fetchAssistantResponse = async (thread: string): Promise<Question | null> => {
-    try {
-      const data = await proxyFetch(`/threads/${thread}/messages`, 'GET');
-      console.log("Mensagens recebidas:", data);
       
-      // Pega apenas a primeira mensagem (a mais recente)
-      const latestMessage = data.data[0];
-      
-      if (latestMessage && latestMessage.role === "assistant") {
-        if (latestMessage.content[0]?.type === "text") {
-          const jsonString = latestMessage.content[0].text.value;
-          const cleanJson = jsonString.replace(/```json\n?|\n?```/g, '').trim();
-          try {
-            const parsed = JSON.parse(cleanJson) as Question;
-            if (!askedQuestions.has(parsed.pergunta)) {
-              setAskedQuestions(prev => new Set([...prev, parsed.pergunta]));
-              return parsed;
-            } else {
-              console.log("Pergunta repetida detectada:", parsed.pergunta);
-              return null;
-            }
-          } catch (parseError) {
-            console.error("Erro ao parsear resposta do assistant:", parseError, cleanJson);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao buscar mensagens:", error);
-    }
-    return null;
-  };
-
-  const getNextQuestionFromAPI = async (answer: string): Promise<Question | null> => {
-    setIsLoading(true);
-    try {
-      let currentThread = threadId;
-      if (!currentThread) {
-        currentThread = await createThread();
-        if (currentThread) {
-          setThreadId(currentThread);
-        } else {
-          console.log("Falha ao criar thread, usando fallback");
-          return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
-        }
-      }
-
-      const messageAdded = await addMessage(currentThread, answer);
-      if (!messageAdded) {
-        console.log("Falha ao adicionar mensagem, usando fallback");
-        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
-      }
-
-      const runId = await runAssistant(currentThread);
-      if (!runId) {
-        console.log("Falha ao criar run, usando fallback");
-        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
-      }
-
-      const runCompleted = await waitForRunCompletion(currentThread, runId);
-      if (!runCompleted) {
-        console.log("Run não completou, usando fallback");
-        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
-      }
-
-      const response = await fetchAssistantResponse(currentThread);
-      if (!response) {
-        console.log("Resposta inválida ou repetida, usando fallback");
-        return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
-      }
-      return response;
+      return null;
     } catch (error) {
       console.error("Erro ao obter próxima pergunta:", error);
-      return step + 1 < fallbackChain.length ? fallbackChain[step + 1] : null;
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -328,31 +163,31 @@ function WeightLossScreening() {
 
   const handleOptionSelect = async (answer: string) => {
     try {
-      setAnswers(prev => [...prev, answer]);
-      const apiQuestion = await getNextQuestionFromAPI(answer);
-      
-      if (apiQuestion) {
-        setCurrentQuestion(apiQuestion);
-      } else if (step + 1 < fallbackChain.length) {
-        setStep(prev => prev + 1);
-        setCurrentQuestion(fallbackChain[step + 1]);
-        setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
+      const nextQuestion = await getNextQuestionFromClaude(answer);
+      if (nextQuestion) {
+        setCurrentQuestion(nextQuestion);
+      } else {
+        const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+        if (currentIndex < fallbackChain.length - 1) {
+          setCurrentQuestion(fallbackChain[currentIndex + 1]);
+          setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
+        }
       }
     } catch (error) {
       console.error("Erro ao processar resposta:", error);
-      if (step + 1 < fallbackChain.length) {
-        setStep(prev => prev + 1);
-        setCurrentQuestion(fallbackChain[step + 1]);
-        setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
+      const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+      if (currentIndex < fallbackChain.length - 1) {
+        setCurrentQuestion(fallbackChain[currentIndex + 1]);
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
       }
     }
   };
 
   const handleContinue = () => {
-    if (step + 1 < fallbackChain.length) {
-      setStep(prev => prev + 1);
-      setCurrentQuestion(fallbackChain[step + 1]);
-      setAskedQuestions(prev => new Set([...prev, fallbackChain[step + 1].pergunta]));
+    const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+    if (currentIndex < fallbackChain.length - 1) {
+      setCurrentQuestion(fallbackChain[currentIndex + 1]);
+      setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
     }
   };
 
