@@ -53,12 +53,26 @@ export default async (request: Request, context: Context) => {
       throw new Error(`Claude API error: ${JSON.stringify(data)}`)
     }
 
-    // Garantir que a resposta esteja no formato esperado
+    // Extrair e limpar o texto da resposta
+    let responseText = data.content?.[0]?.text || '';
+    
+    // Remover possíveis marcadores de código e espaços em branco
+    responseText = responseText.replace(/```json\s*|\s*```/g, '').trim();
+    
+    // Tentar parsear para garantir que é um JSON válido
+    try {
+      JSON.parse(responseText);
+    } catch (error) {
+      console.error('JSON inválido recebido do Claude:', responseText);
+      throw new Error('Resposta inválida do Claude');
+    }
+
+    // Formatar a resposta final
     const formattedResponse = {
       content: [{
         type: 'text',
         text: {
-          value: data.content[0].text,
+          value: responseText,
           annotations: []
         }
       }]
