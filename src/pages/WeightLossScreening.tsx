@@ -346,8 +346,8 @@ function WeightLossScreening() {
         contraindicacoes: [],
         condicoes_relevantes: [],
         estilo_vida: {
-          atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade física"))?.answer || "",
-          padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("hábitos alimentares"))?.answer || "",
+          atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade"))?.answer || "",
+          padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("alimentar"))?.answer || "",
           qualidade_sono: answers.find(a => a.question.toLowerCase().includes("sono"))?.answer || ""
         },
         elegivel_tratamento: true,
