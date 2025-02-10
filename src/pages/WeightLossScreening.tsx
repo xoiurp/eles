@@ -63,21 +63,24 @@ INSTRUÇÕES:
 - Não repita perguntas já feitas
 - Atue como um profissional de saúde experiente
 - Colete informações através de perguntas de múltipla escolha
-- A cada 2 perguntas, inclua um fato curioso sobre saúde
-- Retorne apenas JSON no formato:
+- IMPORTANTE: Retorne apenas UM objeto JSON por resposta
+- Se precisar incluir um fato curioso, faça isso em uma interação separada
+- Retorne no formato:
+
+Para perguntas normais:
 {
   "pergunta": "Sua pergunta aqui",
   "opcoes": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"]
 }
 
-Para fatos curiosos, use:
+Para fatos curiosos (em uma interação separada):
 {
   "pergunta": "Seu fato curioso aqui",
   "opcoes": [],
   "did-you-know": true
 }
 
-Para finalizar use:
+Para finalizar:
 {
   "pergunta": "Mensagem de agradecimento",
   "opcoes": [],
@@ -94,7 +97,7 @@ Colete informações sobre:
 7. Expectativas quanto ao tratamento
 8. Preocupações sobre medicamentos
 
-IMPORTANTE: Retorne apenas o JSON, sem texto adicional.`;
+IMPORTANTE: Retorne apenas UM objeto JSON por resposta, sem texto adicional.`;
 
 function WeightLossScreening() {
   const [currentQuestion, setCurrentQuestion] = useState<Question>(fallbackChain[0]);
@@ -118,7 +121,9 @@ function WeightLossScreening() {
         { 
           role: 'user', 
           content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
-          Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.` 
+          Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
+          
+          IMPORTANTE: Retorne apenas UM objeto JSON, sem texto adicional.` 
         }
       ];
 
