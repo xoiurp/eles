@@ -120,6 +120,8 @@ function WeightLossScreening() {
         }
       ];
 
+      console.log('Enviando mensagens para o Claude:', JSON.stringify(updatedMessages, null, 2));
+
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -131,14 +133,28 @@ function WeightLossScreening() {
       });
 
       if (!response.ok) {
-        throw new Error('Falha na comunicação com o Claude');
+        const errorData = await response.json();
+        console.error('Erro na resposta do Claude:', errorData);
+        throw new Error(`Falha na comunicação com o Claude: ${JSON.stringify(errorData)}`);
       }
 
       const data = await response.json();
-      const assistantMessage = data.content[0].text;
+      console.log('Resposta recebida do Claude:', JSON.stringify(data, null, 2));
+
+      if (!data.content?.[0]?.text?.value) {
+        throw new Error('Resposta do Claude em formato inválido');
+      }
+
+      const assistantMessage = data.content[0].text.value;
+      console.log('Mensagem do assistente:', assistantMessage);
 
       try {
-        const parsed = JSON.parse(assistantMessage) as Question;
+        // Remover possíveis caracteres extras ou quebras de linha
+        const cleanJson = assistantMessage.trim().replace(/```json\n?|\n?```/g, '');
+        console.log('JSON limpo:', cleanJson);
+
+        const parsed = JSON.parse(cleanJson) as Question;
+        console.log('JSON parseado:', parsed);
         
         if (!askedQuestions.has(parsed.pergunta)) {
           setAskedQuestions(prev => new Set([...prev, parsed.pergunta]));
@@ -147,9 +163,13 @@ function WeightLossScreening() {
             { role: 'assistant', content: assistantMessage }
           ]);
           return parsed;
+        } else {
+          console.log('Pergunta já feita:', parsed.pergunta);
         }
       } catch (parseError) {
         console.error("Erro ao parsear resposta do Claude:", parseError);
+        console.error("Conteúdo que causou o erro:", assistantMessage);
+        throw parseError;
       }
       
       return null;

@@ -24,6 +24,8 @@ export default async (request: Request, context: Context) => {
     const body = await request.json()
     const { messages } = body
 
+    console.log('Requisição recebida:', JSON.stringify(messages, null, 2))
+
     // Fazer a requisição para a API do Claude
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -35,15 +37,35 @@ export default async (request: Request, context: Context) => {
       body: JSON.stringify({
         model: 'claude-3-sonnet-20240229',
         max_tokens: 4096,
-        messages,
+        messages: messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        })),
         temperature: 0.7
       })
     })
 
     const data = await response.json()
+    console.log('Resposta do Claude:', JSON.stringify(data, null, 2))
 
-    return new Response(JSON.stringify(data), {
-      status: response.status,
+    // Verificar se há erro na resposta
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${JSON.stringify(data)}`)
+    }
+
+    // Garantir que a resposta esteja no formato esperado
+    const formattedResponse = {
+      content: [{
+        type: 'text',
+        text: {
+          value: data.content[0].text,
+          annotations: []
+        }
+      }]
+    }
+
+    return new Response(JSON.stringify(formattedResponse), {
+      status: 200,
       headers: {
         'Content-Type': 'application/json',
         ...corsHeaders
@@ -51,7 +73,10 @@ export default async (request: Request, context: Context) => {
     })
   } catch (error) {
     console.error('Erro na função:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
