@@ -13,6 +13,11 @@ interface Message {
   content: string;
 }
 
+interface Answer {
+  question: string;
+  answer: string;
+}
+
 const fallbackChain: Question[] = [
   {
     pergunta: "Qual é o seu objetivo no emagrecimento?",
@@ -110,7 +115,7 @@ Para finalizar (use quando todas as informações forem coletadas):
 - Atue como um profissional de saúde experiente
 - Baseie os fatos curiosos nas respostas anteriores do usuário
 - Retorne apenas UM objeto JSON por resposta, sem texto adicional
-- Após mostrar um fato curioso, a próxima resposta deve ser uma nova pergunta
+- Após mostrar um fato curioso, continue o fluxo de perguntas de onde parou
 - Use input-text: true quando precisar de uma resposta detalhada do usuário
 
 IMPORTANTE: Retorne apenas UM objeto JSON por resposta, sem texto adicional.`;
@@ -123,6 +128,7 @@ function WeightLossScreening() {
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [textInput, setTextInput] = useState<string>('');
+  const [answers, setAnswers] = useState<Answer[]>([]);
 
   // Determina o endpoint baseado no ambiente
   const API_ENDPOINT = import.meta.env.PROD 
@@ -133,16 +139,24 @@ function WeightLossScreening() {
     setIsLoading(true);
     setError(null);
     try {
+      // Adicionar a resposta atual ao histórico
+      const newAnswers = [...answers, { question: currentQuestion.pergunta, answer }];
+      setAnswers(newAnswers);
+
       const updatedMessages: Message[] = [
         { role: 'user', content: SYSTEM_PROMPT },
         ...messages,
         { 
           role: 'user', 
-          content: `Histórico de perguntas já feitas: ${Array.from(askedQuestions).join(", ")}. 
+          content: `Histórico completo de perguntas e respostas:
+          ${newAnswers.map(a => `Pergunta: ${a.question}
+          Resposta: ${a.answer}`).join('\n')}
+          
+          Perguntas já feitas: ${Array.from(askedQuestions).join(", ")}.
           Última resposta do usuário para a pergunta "${currentQuestion.pergunta}": ${answer}.
           Número de perguntas feitas desde o último fato curioso: ${questionCount % 2}
           
-          IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 2 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores.` 
+          IMPORTANTE: Retorne apenas UM objeto JSON. Se já foram feitas 2 perguntas desde o último fato curioso, retorne um fato curioso baseado nas respostas anteriores. Após o fato curioso, continue o fluxo de perguntas normalmente.` 
         }
       ];
 
@@ -252,11 +266,17 @@ function WeightLossScreening() {
     }
   };
 
-  const handleContinue = () => {
-    const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
-    if (currentIndex < fallbackChain.length - 1) {
-      setCurrentQuestion(fallbackChain[currentIndex + 1]);
-      setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
+  const handleContinue = async () => {
+    // Após um fato curioso, continuar o fluxo normal de perguntas
+    const nextQuestion = await getNextQuestionFromClaude("Entendi o fato curioso, vamos continuar.");
+    if (nextQuestion) {
+      setCurrentQuestion(nextQuestion);
+    } else {
+      const currentIndex = fallbackChain.findIndex(q => q.pergunta === currentQuestion.pergunta);
+      if (currentIndex < fallbackChain.length - 1) {
+        setCurrentQuestion(fallbackChain[currentIndex + 1]);
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
+      }
     }
   };
 
