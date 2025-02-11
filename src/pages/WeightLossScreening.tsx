@@ -97,6 +97,7 @@ const fallbackChain: Question[] = [
 
 function WeightLossScreening() {
   const [currentQuestion, setCurrentQuestion] = useState<Question>(fallbackChain[0]);
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set([fallbackChain[0].pergunta]));
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -193,7 +194,7 @@ function WeightLossScreening() {
           </div>
           <button
             type="submit"
-            className="w-full bg-rose-500 text-white px-4 py-2 rounded hover:bg-rose-600"
+            className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
           >
             Continuar
           </button>
@@ -383,6 +384,7 @@ function WeightLossScreening() {
       const nextQuestion = await getNextQuestionFromClaude(answer);
       if (nextQuestion) {
         setCurrentQuestion(nextQuestion);
+        setCurrentStep(prev => prev + 1);
         setTextInput('');
       } else {
         const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === currentQuestion.pergunta);
@@ -487,7 +489,7 @@ function WeightLossScreening() {
             {!showPersonalDataForm && (
               <button
                 onClick={() => setShowPersonalDataForm(true)}
-                className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
+                className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
               >
                 Prosseguir com Cadastro
               </button>
@@ -498,10 +500,36 @@ function WeightLossScreening() {
     );
   };
 
+  const renderProgressBar = () => {
+    const totalSteps = 8; // Ajuste conforme necessário
+    const progress = (currentStep / totalSteps) * 100;
+    
+    return (
+      <div className="w-full mb-12">
+        <div className="h-1 bg-gray-200 rounded-full">
+          <div 
+            className="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="mt-2 text-sm text-gray-500 text-right">
+          Etapa {currentStep} de {totalSteps}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-8">
-      <h1 className="text-3xl font-bold mb-6">Triagem para Emagrecimento</h1>
-      <div className="bg-white shadow p-6 rounded w-full max-w-lg">
+    <div className="min-h-screen bg-white flex flex-col items-center p-8 max-w-2xl mx-auto">
+      {renderProgressBar()}
+      <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent">
+        Explore planos de emagrecimento
+      </h1>
+      <p className="text-xl text-gray-600 mb-12 text-center max-w-xl">
+        Conheça opções de tratamento baseadas em seus objetivos, hábitos e histórico de saúde.
+      </p>
+      
+      <div className="w-full max-w-lg">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
@@ -519,13 +547,13 @@ function WeightLossScreening() {
               renderSummary()
             ) : currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <>
-                <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
+                <p className="text-2xl font-medium mb-6 text-gray-800">{currentQuestion.pergunta}</p>
                 <div className="space-y-3">
                   {currentQuestion.opcoes.map((opcao, index) => (
                     <button
                       key={index}
                       onClick={() => handleOptionSelect(opcao)}
-                      className="w-full text-left border rounded p-2 hover:bg-rose-100"
+                      className="w-full text-left px-6 py-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 text-gray-700"
                     >
                       {opcao}
                     </button>
@@ -534,7 +562,7 @@ function WeightLossScreening() {
               </>
             ) : currentQuestion["input-text"] ? (
               <>
-                <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
+                <p className="text-2xl font-medium mb-6 text-gray-800">{currentQuestion.pergunta}</p>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
                   {(currentQuestion.pergunta.toLowerCase().includes("idade") ||
                    currentQuestion.pergunta.toLowerCase().includes("peso") ||
@@ -548,7 +576,7 @@ function WeightLossScreening() {
                           currentQuestion.pergunta.includes("peso") ? "300" :
                           currentQuestion.pergunta.includes("altura") ? "250" : undefined}
                       step={currentQuestion.pergunta.includes("altura") ? "1" : "0.1"}
-                      className="w-full p-2 border rounded focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      className="w-full px-6 py-4 border border-gray-200 rounded-lg focus:border-gray-300 focus:ring-1 focus:ring-gray-300 text-gray-800 text-lg transition-all duration-200"
                       placeholder={`Digite ${currentQuestion.pergunta.toLowerCase().includes("idade") ? "sua idade" :
                                   currentQuestion.pergunta.toLowerCase().includes("peso") ? "seu peso em kg" :
                                   currentQuestion.pergunta.toLowerCase().includes("altura") ? "sua altura em cm" : ""}...`}
@@ -557,15 +585,15 @@ function WeightLossScreening() {
                     <textarea
                       value={textInput}
                       onChange={(e) => setTextInput(e.target.value)}
-                      className="w-full p-2 border rounded min-h-[100px] focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      className="w-full px-6 py-4 border border-gray-200 rounded-lg focus:border-gray-300 focus:ring-1 focus:ring-gray-300 text-gray-800 text-lg min-h-[120px] transition-all duration-200"
                       placeholder="Descreva detalhadamente sua resposta..."
                       rows={4}
                     />
                   )}
                   <button
                     type="submit"
-                    className="w-full bg-rose-500 text-white px-4 py-2 rounded"
-                    disabled={!textInput.trim()}
+                    className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
+                    disabled={!textInput.trim() || isLoading}
                   >
                     Enviar
                   </button>
@@ -581,7 +609,7 @@ function WeightLossScreening() {
                 </p>
                 <button
                   onClick={handleContinue}
-                  className="mt-4 bg-rose-500 text-white px-4 py-2 rounded"
+                  className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
                 >
                   Continuar
                 </button>
