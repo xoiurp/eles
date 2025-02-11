@@ -557,12 +557,12 @@ function WeightLossScreening() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center p-8 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-white flex flex-col items-center px-8 pt-12 pb-8 max-w-2xl mx-auto">
       {renderProgressBar()}
-     <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent">
+     <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto">
         {getStepContent().title}
       </h1>
-      <p className="text-xl text-gray-600 mb-12 text-center max-w-xl">
+      <p className="text-xl text-gray-600 mb-12 text-center max-w-xl mx-auto">
         {getStepContent().subtitle}
       </p>
       
@@ -584,7 +584,7 @@ function WeightLossScreening() {
               renderSummary()
             ) : currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <>
-                <p className="text-2xl font-medium mb-6 text-gray-800">{currentQuestion.pergunta}</p>
+                <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
                 <div className="space-y-3">
                   {currentQuestion.opcoes.map((opcao, index) => (
                     <button
@@ -599,7 +599,7 @@ function WeightLossScreening() {
               </>
             ) : currentQuestion["input-text"] ? (
               <>
-                <p className="text-2xl font-medium mb-6 text-gray-800">{currentQuestion.pergunta}</p>
+                <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
                   {(currentQuestion.pergunta.toLowerCase().includes("idade") ||
                    currentQuestion.pergunta.toLowerCase().includes("peso") ||
@@ -638,10 +638,10 @@ function WeightLossScreening() {
               </>
             ) : currentQuestion["did-you-know"] ? (
               <div>
-                <p className="mt-4 italic text-gray-500">
+                <p className="mt-4 italic text-gray-500 text-center">
                   Você sabia?
                 </p>
-                <p className="mt-2 text-lg">
+                <p className="mt-2 text-lg text-center">
                   {currentQuestion.pergunta}
                 </p>
                 <button
