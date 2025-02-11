@@ -569,18 +569,18 @@ function WeightLossScreening() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center px-8 pt-12 pb-8 max-w-2xl mx-auto">
+    <div className="h-screen bg-white flex flex-col items-center px-4 sm:px-8 pt-6 sm:pt-12 pb-4 sm:pb-8 max-w-2xl mx-auto overflow-y-auto">
       {!currentQuestion["did-you-know"] && renderProgressBar()}
       <div
  
         key={currentStep}
         className="animate-fade-slide-down transition-all duration-700 ease-in-out w-full"
       >
-        {!currentQuestion["did-you-know"] && <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
+        {!currentQuestion["did-you-know"] && <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
           {getStepContent().title}
         </h1>
 }
-        {!currentQuestion["did-you-know"] && <p className="text-xl text-gray-500 mb-16 text-center max-w-xl leading-relaxed mx-auto">
+        {!currentQuestion["did-you-know"] && <p className="text-lg sm:text-xl text-gray-500 mb-8 sm:mb-16 text-center max-w-xl leading-relaxed mx-auto">
 
           {getStepContent().subtitle}
         </p>
@@ -612,7 +612,7 @@ function WeightLossScreening() {
                     key={`question-${currentStep}-${currentQuestion.pergunta}`}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                   >
-                    <p className="text-2xl font-medium mb-8 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                    <p className="text-xl sm:text-2xl font-medium mb-6 sm:mb-8 text-gray-800 text-center">{currentQuestion.pergunta}</p>
                   </div>
                 </div>
                 
@@ -621,7 +621,7 @@ function WeightLossScreening() {
                     <button
                       key={index}
                       onClick={() => handleOptionSelect(opcao)}
-                      className="w-full text-left px-8 py-5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
+                      className="w-full text-left px-6 sm:px-8 py-4 sm:py-5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
                     >
                       {opcao}
                     </button>
@@ -637,7 +637,7 @@ function WeightLossScreening() {
                     key={`question-${currentStep}-${currentQuestion.pergunta}`}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                   >
-                    <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                    <p className="text-xl sm:text-2xl font-medium mb-4 sm:mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
                   </div>
                 </div>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
@@ -685,16 +685,16 @@ function WeightLossScreening() {
                   style={{ transform: 'translate3d(0,0,0)' }}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                 >
-                  <div className="space-y-8 pt-12">
-                    <p className="text-4xl font-medium text-rose-300/80 text-center">
+                  <div className="space-y-6 sm:space-y-8 pt-8 sm:pt-12">
+                    <p className="text-3xl sm:text-4xl font-medium text-rose-300/80 text-center">
                     [e]
                     </p>
                   <div className="space-y-6">
                     {currentQuestion.pergunta.split('\n').map((paragraph, index) => (
                       <p 
                         key={index}
-                        className={`text-2xl leading-relaxed text-rose-700/80 text-center
-                         ${index === 0 ? 'font-medium' : 'font-normal opacity-90'}`}
+                        className={`text-xl sm:text-2xl leading-relaxed text-rose-700/80 text-center
+                          ${index === 0 ? 'font-medium' : 'font-normal opacity-90'}`}
                       >
                         {paragraph}
                       </p>
