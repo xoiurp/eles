@@ -207,27 +207,39 @@ function WeightLossScreening() {
     setError(null);
     try {
       if (currentQuestion["input-text"]) {
-        const numericAnswer = parseFloat(answer);
-        if (currentQuestion.pergunta.includes("idade")) {
-          if (numericAnswer < 18) {
-            setHasRedFlags(true);
+        const isNumericQuestion = currentQuestion.pergunta.toLowerCase().match(/^(qual|digite|informe).*(idade|peso|altura)/);
+        
+        if (isNumericQuestion) {
+          const numericAnswer = parseFloat(answer);
+          if (isNaN(numericAnswer)) {
+            throw new Error("Por favor, insira um número válido");
           }
-          setDadosBasicos(prev => ({ ...prev, idade: numericAnswer }));
-        } else if (currentQuestion.pergunta.includes("peso")) {
-          setDadosBasicos(prev => ({ ...prev, peso: numericAnswer }));
-        } else if (currentQuestion.pergunta.includes("altura")) {
-          const altura = numericAnswer;
-          setDadosBasicos(prev => {
-            const newDados = { ...prev, altura };
-            if (newDados.peso) {
-              newDados.imc = calculateIMC(newDados.peso, altura);
-              if (!checkIMCEligibility(newDados.imc)) {
+          
+          if (currentQuestion.pergunta.includes("idade")) {
+            if (numericAnswer < 18) {
+              setHasRedFlags(true);
+            }
+            setDadosBasicos(prev => ({ ...prev, idade: numericAnswer }));
+          } else if (currentQuestion.pergunta.includes("peso")) {
+            setDadosBasicos(prev => ({ ...prev, peso: numericAnswer }));
+          } else if (currentQuestion.pergunta.includes("altura")) {
+            const altura = numericAnswer;
+            setDadosBasicos(prev => {
+              const newDados = { ...prev, altura };
+              if (newDados.peso) {
+                newDados.imc = calculateIMC(newDados.peso, altura);
                 setHasRedFlags(!checkIMCEligibility(newDados.imc));
               }
-            }
-            return newDados;
-          });
+              return newDados;
+            });
         }
+     } else {
+        const minLength = isNumericQuestion ? 1 : 3;
+        const maxLength = isNumericQuestion ? 4 : 500;
+        if (answer.trim().length < minLength || answer.trim().length > maxLength) {
+         throw new Error(`Por favor, forneça uma resposta ${answer.trim().length < minLength ? 'mais detalhada' : 'mais concisa'}`);
+        }
+      }
       }
 
       // Verificar respostas sobre comorbidades
@@ -353,7 +365,7 @@ function WeightLossScreening() {
         elegivel_tratamento: true,
         tratamentos_indicados: [{
           nome: answer.split(" - ")[0],
-          preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "")),
+          preco: parseFloat(answer.split("R$ ")[1].split(",")[0].replace(".", "").trim()),
           descricao: answer
         }]
       };
@@ -477,7 +489,7 @@ function WeightLossScreening() {
                 onClick={() => setShowPersonalDataForm(true)}
                 className="mt-4 bg-rose-500 text-white px-6 py-2 rounded hover:bg-rose-600 transition-colors"
               >
-                Entender Tratamento
+                Prosseguir com Cadastro
               </button>
             )}
           </div>
@@ -524,13 +536,32 @@ function WeightLossScreening() {
               <>
                 <p className="text-xl font-semibold mb-4">{currentQuestion.pergunta}</p>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
-                  <input
-                    type="number"
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                    className="w-full p-2 border rounded"
-                    placeholder="Digite sua resposta aqui..."
-                  />
+                  {(currentQuestion.pergunta.toLowerCase().includes("idade") ||
+                   currentQuestion.pergunta.toLowerCase().includes("peso") ||
+                   currentQuestion.pergunta.toLowerCase().includes("altura")) ? (
+                    <input
+                      type="number"
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      min={currentQuestion.pergunta.toLowerCase().includes("idade") ? "18" : "1"}
+                      max={currentQuestion.pergunta.includes("idade") ? "120" : 
+                          currentQuestion.pergunta.includes("peso") ? "300" :
+                          currentQuestion.pergunta.includes("altura") ? "250" : undefined}
+                      step={currentQuestion.pergunta.includes("altura") ? "1" : "0.1"}
+                      className="w-full p-2 border rounded focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      placeholder={`Digite ${currentQuestion.pergunta.toLowerCase().includes("idade") ? "sua idade" :
+                                  currentQuestion.pergunta.toLowerCase().includes("peso") ? "seu peso em kg" :
+                                  currentQuestion.pergunta.toLowerCase().includes("altura") ? "sua altura em cm" : ""}...`}
+                    />
+                  ) : (
+                    <textarea
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      className="w-full p-2 border rounded min-h-[100px] focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      placeholder="Descreva detalhadamente sua resposta..."
+                      rows={4}
+                    />
+                  )}
                   <button
                     type="submit"
                     className="w-full bg-rose-500 text-white px-4 py-2 rounded"
