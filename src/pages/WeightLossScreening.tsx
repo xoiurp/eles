@@ -559,13 +559,20 @@ function WeightLossScreening() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center px-8 pt-12 pb-8 max-w-2xl mx-auto">
       {renderProgressBar()}
-     <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto">
-        {getStepContent().title}
-      </h1>
-      <p className="text-xl text-gray-600 mb-12 text-center max-w-xl mx-auto">
-        {getStepContent().subtitle}
-      </p>
-      
+      <div
+ 
+        key={currentStep}
+        className="animate-fade-slide-down transition-all duration-700 ease-in-out w-full"
+      >
+        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto">
+          {getStepContent().title}
+        </h1>
+        <p className="text-xl text-gray-600 mb-12 text-center max-w-xl leading-relaxed mx-auto opacity-90">
+
+          {getStepContent().subtitle}
+        </p>
+      </div>
+
       <div className="w-full max-w-lg">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
@@ -584,13 +591,23 @@ function WeightLossScreening() {
               renderSummary()
             ) : currentQuestion.opcoes && currentQuestion.opcoes.length > 0 ? (
               <>
-                <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                <div
+ className="overflow-hidden"
+>
+                  <div
+                    key={`question-${currentStep}-${currentQuestion.pergunta}`}
+                  className="animate-fade-slide-down transition-all duration-500 ease-out"
+                  >
+                    <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                  </div>
+                </div>
+                
                 <div className="space-y-3">
                   {currentQuestion.opcoes.map((opcao, index) => (
                     <button
                       key={index}
                       onClick={() => handleOptionSelect(opcao)}
-                      className="w-full text-left px-6 py-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 text-gray-700"
+                      className="w-full text-left px-6 py-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
                     >
                       {opcao}
                     </button>
@@ -599,7 +616,16 @@ function WeightLossScreening() {
               </>
             ) : currentQuestion["input-text"] ? (
               <>
-                <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                <div
+ className="overflow-hidden"
+>
+                  <div
+                    key={`question-${currentStep}-${currentQuestion.pergunta}`}
+                  className="animate-fade-slide-down transition-all duration-500 ease-out"
+                  >
+                    <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                  </div>
+                </div>
                 <form onSubmit={handleTextSubmit} className="space-y-3">
                   {(currentQuestion.pergunta.toLowerCase().includes("idade") ||
                    currentQuestion.pergunta.toLowerCase().includes("peso") ||
@@ -637,19 +663,29 @@ function WeightLossScreening() {
                 </form>
               </>
             ) : currentQuestion["did-you-know"] ? (
-              <div>
-                <p className="mt-4 italic text-gray-500 text-center">
-                  Você sabia?
-                </p>
-                <p className="mt-2 text-lg text-center">
-                  {currentQuestion.pergunta}
-                </p>
-                <button
-                  onClick={handleContinue}
-                  className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
+              <div
+ className="overflow-hidden"
+>
+                <div 
+                  key={`fact-${currentStep}-${currentQuestion.pergunta}`}
+                  style={{ transform: 'translate3d(0,0,0)' }}
+                  className="animate-fade-slide-down transition-all duration-500 ease-out"
                 >
-                  Continuar
-                </button>
+                  <div>
+                    <p className="mt-4 italic text-gray-500 text-center">
+                      Você sabia?
+                    </p>
+                    <p className="mt-2 text-lg text-center">
+                      {currentQuestion.pergunta}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleContinue}
+                    className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
+                  >
+                    Continuar
+                  </button>
+                </div>
               </div>
             ) : null}
           </>
