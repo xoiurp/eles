@@ -546,11 +546,19 @@ function WeightLossScreening() {
     
     return (
       <div className="w-full mb-12">
-        <div className="h-1 bg-gray-200 rounded-full">
+        <div className="relative h-1.5">
+          {/* Linha do tempo completa */}
+          <div className="absolute w-full h-full flex justify-between">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+            ))}
+          </div>
+          {/* Barra de progresso */}
           <div 
-            className="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-500 ease-out"
+            className="absolute h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700 ease-in-out"
             style={{ width: `${maxProgress}%` }}
           />
+          <div className="absolute w-full h-full bg-gray-200 -z-10 rounded-full" />
         </div>
       </div>
     );
@@ -564,10 +572,10 @@ function WeightLossScreening() {
         key={currentStep}
         className="animate-fade-slide-down transition-all duration-700 ease-in-out w-full"
       >
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto">
+        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
           {getStepContent().title}
         </h1>
-        <p className="text-xl text-gray-600 mb-12 text-center max-w-xl leading-relaxed mx-auto opacity-90">
+        <p className="text-xl text-gray-500 mb-16 text-center max-w-xl leading-relaxed mx-auto">
 
           {getStepContent().subtitle}
         </p>
@@ -598,7 +606,7 @@ function WeightLossScreening() {
                     key={`question-${currentStep}-${currentQuestion.pergunta}`}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                   >
-                    <p className="text-2xl font-medium mb-6 text-gray-800 text-center">{currentQuestion.pergunta}</p>
+                    <p className="text-2xl font-medium mb-8 text-gray-800 text-center">{currentQuestion.pergunta}</p>
                   </div>
                 </div>
                 
@@ -607,7 +615,7 @@ function WeightLossScreening() {
                     <button
                       key={index}
                       onClick={() => handleOptionSelect(opcao)}
-                      className="w-full text-left px-6 py-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
+                      className="w-full text-left px-8 py-5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
                     >
                       {opcao}
                     </button>
