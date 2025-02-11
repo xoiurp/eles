@@ -542,7 +542,7 @@ function WeightLossScreening() {
   };
 
   const renderProgressBar = () => {
-    const maxProgress = Math.min(currentStep * 15, 100); // Cada etapa aumenta 15%, máximo 100%
+    const maxProgress = Math.min(currentStep * 5, 100); // Cada etapa aumenta 5%, máximo 100%
     const isFullButNotFinished = maxProgress === 100 && !currentQuestion["last_step"];
     
     return (
@@ -558,7 +558,7 @@ function WeightLossScreening() {
           <div className="absolute w-full h-full bg-gray-200 rounded-full" />
           <div 
             className={`
-              absolute h-full bg-rose-500 rounded-full transition-all duration-700 ease-in-out
+              absolute h-full bg-rose-500 rounded-full transition-all duration-2100 ease-in-out
               ${isFullButNotFinished ? 'animate-progress-pulse' : ''}
             `}
             style={{ width: `${maxProgress}%` }}
