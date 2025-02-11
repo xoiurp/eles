@@ -570,19 +570,21 @@ function WeightLossScreening() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center px-8 pt-12 pb-8 max-w-2xl mx-auto">
-      {renderProgressBar()}
+      {!currentQuestion["did-you-know"] && renderProgressBar()}
       <div
  
         key={currentStep}
         className="animate-fade-slide-down transition-all duration-700 ease-in-out w-full"
       >
-        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
+        {!currentQuestion["did-you-know"] && <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
           {getStepContent().title}
         </h1>
-        <p className="text-xl text-gray-500 mb-16 text-center max-w-xl leading-relaxed mx-auto">
+}
+        {!currentQuestion["did-you-know"] && <p className="text-xl text-gray-500 mb-16 text-center max-w-xl leading-relaxed mx-auto">
 
           {getStepContent().subtitle}
         </p>
+}
       </div>
 
       <div className="w-full max-w-lg">
@@ -683,10 +685,10 @@ function WeightLossScreening() {
                   style={{ transform: 'translate3d(0,0,0)' }}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                 >
-                  <div className="space-y-8">
+                  <div className="space-y-8 pt-12">
                     <p className="text-4xl font-medium text-rose-300/80 text-center">
                     [e]
-                  </p>
+                    </p>
                   <div className="space-y-6">
                     {currentQuestion.pergunta.split('\n').map((paragraph, index) => (
                       <p 
@@ -699,17 +701,17 @@ function WeightLossScreening() {
                     ))}
                   </div>
                   <div className="flex justify-end mt-12">
-                         <button
-                        onClick={handleContinue}
-                        className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 
-                        transition-colors flex items-center gap-2"
+                    <button
+                       onClick={handleContinue}
+                      className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 
+transition-colors flex items-center gap-2"
                     >
                       Continuar
                       <span className="text-xl">→</span>
                     </button>
                   </div>
                 </div>
-                </div>
+              </div>
               </div>
             ) : null}
           </>
