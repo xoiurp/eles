@@ -360,7 +360,7 @@ function WeightLossScreening() {
         condicoes_relevantes: [],
         estilo_vida: {
           atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade"))?.answer || "",
-          padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("alimentar"))?.answer || "",
+          padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("padrão alimentar") || a.question.toLowerCase().includes("hábitos alimentares"))?.answer || "Não informado",
           qualidade_sono: answers.find(a => a.question.toLowerCase().includes("sono"))?.answer || ""
         },
         elegivel_tratamento: true,
@@ -543,22 +543,26 @@ function WeightLossScreening() {
 
   const renderProgressBar = () => {
     const maxProgress = Math.min(currentStep * 15, 100); // Cada etapa aumenta 15%, máximo 100%
+    const isFullButNotFinished = maxProgress === 100 && !currentQuestion["last_step"];
     
     return (
       <div className="w-full mb-12">
-        <div className="relative h-1.5">
+        <div className="relative h-1">
           {/* Linha do tempo completa */}
           <div className="absolute w-full h-full flex justify-between">
             {[...Array(7)].map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+              <div key={i} className="w-1 h-1 rounded-full bg-gray-200 transform translate-y-0" />
             ))}
           </div>
           {/* Barra de progresso */}
+          <div className="absolute w-full h-full bg-gray-200 rounded-full" />
           <div 
-            className="absolute h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700 ease-in-out"
+            className={`
+              absolute h-full bg-rose-500 rounded-full transition-all duration-700 ease-in-out
+              ${isFullButNotFinished ? 'animate-progress-pulse' : ''}
+            `}
             style={{ width: `${maxProgress}%` }}
           />
-          <div className="absolute w-full h-full bg-gray-200 -z-10 rounded-full" />
         </div>
       </div>
     );
@@ -679,20 +683,32 @@ function WeightLossScreening() {
                   style={{ transform: 'translate3d(0,0,0)' }}
                   className="animate-fade-slide-down transition-all duration-500 ease-out"
                 >
-                  <div>
-                    <p className="mt-4 italic text-gray-500 text-center">
-                      Você sabia?
-                    </p>
-                    <p className="mt-2 text-lg text-center">
-                      {currentQuestion.pergunta}
-                    </p>
+                  <div className="space-y-8">
+                    <p className="text-4xl font-medium text-rose-300/80 text-center">
+                    [e]
+                  </p>
+                  <div className="space-y-6">
+                    {currentQuestion.pergunta.split('\n').map((paragraph, index) => (
+                      <p 
+                        key={index}
+                        className={`text-2xl leading-relaxed text-rose-700/80 text-center
+                         ${index === 0 ? 'font-medium' : 'font-normal opacity-90'}`}
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
                   </div>
-                  <button
-                    onClick={handleContinue}
-                    className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors mt-6"
-                  >
-                    Continuar
-                  </button>
+                  <div className="flex justify-end mt-12">
+                         <button
+                        onClick={handleContinue}
+                        className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 
+                        transition-colors flex items-center gap-2"
+                    >
+                      Next
+                      <span className="text-xl">→</span>
+                    </button>
+                  </div>
+                </div>
                 </div>
               </div>
             ) : null}

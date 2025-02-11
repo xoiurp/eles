@@ -16,10 +16,22 @@ export default {
             opacity: '1', 
             transform: 'translateY(0)' 
           }
+        },
+        'progress-pulse': {
+          '0%, 100%': {
+            opacity: '1',
+            boxShadow: '0 0 5px rgba(244,63,94,0.2)'
+          },
+          '50%': {
+            opacity: '0.85',
+            boxShadow: '0 0 8px rgba(244,63,94,0.4)'
+          }
         }
       },
       animation: {
         'fade-slide-down': 'fade-slide-down 0.5s ease-out forwards'
+,
+        'progress-pulse': 'progress-pulse 2s ease-in-out infinite'
       }
     },
   },
