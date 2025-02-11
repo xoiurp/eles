@@ -704,7 +704,7 @@ function WeightLossScreening() {
                         className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 
                         transition-colors flex items-center gap-2"
                     >
-                      Next
+                      Continuar
                       <span className="text-xl">→</span>
                     </button>
                   </div>
