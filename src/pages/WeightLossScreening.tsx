@@ -500,20 +500,57 @@ function WeightLossScreening() {
     );
   };
 
+  const getStepContent = (): { title: string; subtitle: string } => {
+    // Textos dinâmicos baseados na etapa atual
+    if (currentQuestion["last_step"] === "true") {
+      return {
+        title: "Seu plano personalizado está pronto",
+        subtitle: "Revise suas informações e escolha a melhor opção de tratamento para você"
+      };
+    }
+
+    if (showTreatmentOptions) {
+      return {
+        title: "Escolha seu plano ideal",
+        subtitle: "Compare as opções e selecione o tratamento que melhor atende suas necessidades"
+      };
+    }
+
+    
+    if (currentQuestion.pergunta?.toLowerCase().includes("idade") || 
+        currentQuestion.pergunta.toLowerCase().includes("peso") || 
+        currentQuestion.pergunta.toLowerCase().includes("altura")) {
+      return {
+        title: "Vamos começar com seus dados básicos",
+        subtitle: "Estas informações são essenciais para personalizar seu plano"
+      };
+    }
+
+    if (currentQuestion["did-you-know"]) {
+      return {
+        title: "Você sabia?",
+        subtitle: "Descubra informações importantes sobre saúde e bem-estar"
+      };
+    }
+
+    const defaultContent = {
+      title: "Explore planos de emagrecimento",
+      subtitle: "Vamos personalizar um tratamento baseado em suas necessidades"
+    };
+    
+    return defaultContent;
+  };
+
   const renderProgressBar = () => {
-    const totalSteps = 8; // Ajuste conforme necessário
-    const progress = (currentStep / totalSteps) * 100;
+    const maxProgress = Math.min(currentStep * 15, 100); // Cada etapa aumenta 15%, máximo 100%
     
     return (
       <div className="w-full mb-12">
         <div className="h-1 bg-gray-200 rounded-full">
           <div 
             className="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${maxProgress}%` }}
           />
-        </div>
-        <div className="mt-2 text-sm text-gray-500 text-right">
-          Etapa {currentStep} de {totalSteps}
         </div>
       </div>
     );
@@ -522,11 +559,11 @@ function WeightLossScreening() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center p-8 max-w-2xl mx-auto">
       {renderProgressBar()}
-      <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent">
-        Explore planos de emagrecimento
+     <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent">
+        {getStepContent().title}
       </h1>
       <p className="text-xl text-gray-600 mb-12 text-center max-w-xl">
-        Conheça opções de tratamento baseadas em seus objetivos, hábitos e histórico de saúde.
+        {getStepContent().subtitle}
       </p>
       
       <div className="w-full max-w-lg">
