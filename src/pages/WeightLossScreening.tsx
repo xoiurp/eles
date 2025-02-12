@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WEIGHT_LOSS_SYSTEM_PROMPT } from '../constants/prompts';
 
 interface DadosBasicos {
@@ -116,6 +116,9 @@ function WeightLossScreening() {
     endereco: ''
   });
 
+  const prevTitle = useRef<string>('');
+  const prevSubtitle = useRef<string>('');
+  const [shouldAnimateHeader, setShouldAnimateHeader] = useState<boolean>(true);
   const calculateIMC = (peso: number, altura: number): number => {
     const alturaMetros = altura / 100;
     return Number((peso / (alturaMetros * alturaMetros)).toFixed(1));
@@ -500,7 +503,7 @@ function WeightLossScreening() {
     );
   };
 
-  const getStepContent = (): { title: string; subtitle: string } => {
+  const getStepContent = () => {
     // Textos dinâmicos baseados na etapa atual
     if (currentQuestion["last_step"] === "true") {
       return {
@@ -541,6 +544,24 @@ function WeightLossScreening() {
     return defaultContent;
   };
 
+  useEffect(() => {
+    const currentContent = getStepContent();
+    
+    // Verifica se o título ou subtítulo mudaram
+    if (
+      currentContent.title !== prevTitle.current ||
+      currentContent.subtitle !== prevSubtitle.current
+    ) {
+      setShouldAnimateHeader(true);
+      prevTitle.current = currentContent.title;
+      prevSubtitle.current = currentContent.subtitle;
+    } else {
+      setShouldAnimateHeader(false);
+    }
+  }, [currentQuestion]);
+
+  const headerContent = getStepContent();
+
   const renderProgressBar = () => {
     const maxProgress = Math.min(currentStep * 5, 100); // Cada etapa aumenta 5%, máximo 100%
     const isFullButNotFinished = maxProgress === 100 && !currentQuestion["last_step"];
@@ -574,15 +595,15 @@ function WeightLossScreening() {
       <div
  
         key={currentStep}
-        className="animate-fade-slide-down transition-all duration-700 ease-in-out w-full"
+        className={`${shouldAnimateHeader ? 'animate-fade-slide-down' : ''} transition-all duration-700 ease-in-out w-full`}
       >
         {!currentQuestion["did-you-know"] && <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
-          {getStepContent().title}
+          {headerContent.title}
         </h1>
 }
         {!currentQuestion["did-you-know"] && <p className="text-lg sm:text-xl text-gray-500 mb-8 sm:mb-16 text-center max-w-xl leading-relaxed mx-auto">
 
-          {getStepContent().subtitle}
+          {headerContent.subtitle}
         </p>
 }
       </div>
