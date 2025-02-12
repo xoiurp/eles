@@ -359,7 +359,7 @@ function WeightLossScreening() {
         contraindicacoes: [],
         condicoes_relevantes: [],
         estilo_vida: {
-          atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade"))?.answer || "",
+          atividade_fisica: answers.find(a => a.question.toLowerCase().includes("atividade física") || a.question.toLowerCase().includes("exercício"))?.answer || "Não informado",
           padrao_alimentar: answers.find(a => a.question.toLowerCase().includes("padrão alimentar") || a.question.toLowerCase().includes("hábitos alimentares"))?.answer || "Não informado",
           qualidade_sono: answers.find(a => a.question.toLowerCase().includes("sono"))?.answer || ""
         },
@@ -420,7 +420,7 @@ function WeightLossScreening() {
     const { dados_basicos, contraindicacoes, condicoes_relevantes, estilo_vida, elegivel_tratamento, tratamentos_indicados } = currentQuestion.summary;
     
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 flex-1 overflow-y-auto scrollbar-hide">
         <h3 className="text-xl font-bold">Resumo da Triagem</h3>
         
         <div className="bg-gray-50 p-4 rounded">
@@ -569,7 +569,7 @@ function WeightLossScreening() {
   };
 
   return (
-    <div className="h-screen bg-white flex flex-col items-center px-4 sm:px-8 pt-6 sm:pt-12 pb-4 sm:pb-8 max-w-2xl mx-auto overflow-y-auto">
+    <div className="h-screen bg-white flex flex-col items-center px-4 sm:px-8 pt-6 sm:pt-12 pb-4 sm:pb-8 max-w-2xl mx-auto overflow-hidden">
       {!currentQuestion["did-you-know"] && renderProgressBar()}
       <div
  
@@ -587,7 +587,7 @@ function WeightLossScreening() {
 }
       </div>
 
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-lg flex-1 min-h-0 flex flex-col">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
