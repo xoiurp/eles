@@ -597,7 +597,7 @@ function WeightLossScreening() {
         key={currentStep}
         className={`${shouldAnimateHeader ? 'animate-fade-slide-down' : ''} transition-all duration-700 ease-in-out w-full`}
       >
-        {!currentQuestion["did-you-know"] && <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-tight tracking-tight">
+        {!currentQuestion["did-you-know"] && <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-rose-500 to-gray-800 bg-clip-text text-transparent text-center max-w-xl mx-auto leading-relaxed tracking-tight">
           {headerContent.title}
         </h1>
 }
