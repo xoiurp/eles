@@ -721,11 +721,11 @@ function WeightLossScreening() {
                       </p>
                     ))}
                   </div>
-                  <div className="flex justify-end mt-12">
+                  <div className="flex justify-center mt-12">
                     <button
                        onClick={handleContinue}
-                      className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 
-transition-colors flex items-center gap-2"
+                      className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 
+transition-colors flex items-center justify-center gap-2"
                     >
                       Continuar
                       <span className="text-xl">→</span>
