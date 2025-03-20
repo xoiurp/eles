@@ -69,7 +69,7 @@ function HairGrowth() {
           </div>
           
           <button className="bg-black text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-rose-500 transition-all duration-300 w-fit shadow-lg hover:shadow-rose-200">
-            Faça o teste gratuito
+            Faça a triagem agora
           </button>
           
           <p className="text-sm text-gray-500 mt-12 max-w-md leading-relaxed">
@@ -93,24 +93,24 @@ function HairGrowth() {
                   {/* First set of images */}
                   <div className="space-y-4">
                     <img 
-                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/homem-calvicie.webp"
+                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket//Minoxidil%20Metade%20%20Rosto%20Ruido%209.png"
                       alt="Hair Product 1"
                       className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform"
                     />
                     <img 
-                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/homem-calvicie-lavando-com-shampoo%201@1x.webp"
+                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket//Aplicando%20Minoxidil%20Eles.png"
                       alt="Hair Product 2"
                       className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform"
                     />
                     <img 
-                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/aplicando-minox.webp"
+                      src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket//Shampoo%20Antiqueda%20+%20Realista%20+%20Expanded%201.png"
                       alt="Hair Product 3"
                       className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform"
                     />
                   </div>
                   {/* Duplicate set for seamless loop */}
                   <div className="space-y-4">
-                    <img src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/aplicando-minox.webp" alt="Hair Product 1" className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform" />
+                    <img src="https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket//Minoxidil%20Metade%20%20Rosto%20Ruido%205.png" alt="Hair Product 1" className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform" />
                     <img src="https://hxvvkrnxgdfledopeatb.supabase.co/storage/v1/object/public/bolt/hair2.webp" alt="Hair Product 2" className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform" />
                     <img src="https://hxvvkrnxgdfledopeatb.supabase.co/storage/v1/object/public/bolt/hair3.webp" alt="Hair Product 3" className="w-full aspect-[4/5] object-cover rounded-2xl shadow-lg hover:scale-[1.02] transition-transform" />
                   </div>
