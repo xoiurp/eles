@@ -1,57 +1,88 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, Users, Sparkles, Brain, Heart, Leaf, ChevronRight, MessageSquare, Timer, Stethoscope, Truck, CreditCard, Smile, ChevronLeft, Star, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Users, Sparkles, Brain, Heart, Leaf, ChevronRight, MessageSquare, Timer, Stethoscope, Truck, CreditCard, Smile, ChevronLeft, Star, CheckCircle2, ArrowRight, Loader } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { getProducts } from '../lib/shopify';
+import { ProductDialog } from '../components/ProductDialog';
 
 // Define product type
 interface Product {
   tag: string;
   name: string;
   imageUrl: string;
+  id?: string;
+  title?: string;
+  description?: string;
+  price?: string;
+  handle?: string;
+  imageAlt?: string;
 }
 
 function HairGrowth() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Define products data
-  const products: Product[] = [
-    {
-      tag: "Anti-DHT",
-      name: "Finasterida Oral",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Finasterida%20Reference%201@1x.webp"
-    },
-    {
-      tag: "Potente",
-      name: "Dutasterida Oral",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Dutasterida%20Reference%205@1x.webp"
-    },
-    {
-      tag: "Tópico",
-      name: "Minoxidil Solução",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/MInox%20png%20com%20sombra%203%201@1x.webp"
-    },
-    {
-      tag: "Sistêmico",
-      name: "Minoxidil Oral",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Minoxidil%20Oral%20Png%202@1x.webp"
-    },
-    {
-      tag: "Natural",
-      name: "Saw Palmetto",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Saw%20Palmetto%20PNG%20com%20Sombra%203.webp"
-    },
-    {
-      tag: "Vitamina",
-      name: "Biotina",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Biotina%20png%20sombra%202.webp"
-    },
-    {
-      tag: "Limpeza",
-      name: "Shampoo Antiqueda",
-      imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Shampoo%20Antiqueda%20png%20com%20sombra%202%201@1x.webp"
-    }
-  ];
+  // Buscar produtos do Shopify
+  useEffect(() => {
+    const fetchShopifyProducts = async () => {
+      try {
+        setLoading(true);
+        const shopifyProducts = await getProducts(10, "gid://shopify/Collection/478659117249");
+        
+        if (shopifyProducts && shopifyProducts.length > 0) {
+          setProducts(shopifyProducts);
+        } else {
+          // Fallback para produtos estáticos caso a API falhe
+          setProducts([
+            {
+              tag: "Anti-DHT",
+              name: "Finasterida Oral",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Finasterida%20Reference%201@1x.webp"
+            },
+            {
+              tag: "Potente",
+              name: "Dutasterida Oral",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Dutasterida%20Reference%205@1x.webp"
+            },
+            {
+              tag: "Tópico",
+              name: "Minoxidil Solução",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/MInox%20png%20com%20sombra%203%201@1x.webp"
+            },
+            {
+              tag: "Sistêmico",
+              name: "Minoxidil Oral",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Minoxidil%20Oral%20Png%202@1x.webp"
+            },
+            {
+              tag: "Natural",
+              name: "Saw Palmetto",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Saw%20Palmetto%20PNG%20com%20Sombra%203.webp"
+            },
+            {
+              tag: "Vitamina",
+              name: "Biotina",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Biotina%20png%20sombra%202.webp"
+            },
+            {
+              tag: "Limpeza",
+              name: "Shampoo Antiqueda",
+              imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Produtos/Shampoo%20Antiqueda%20png%20com%20sombra%202%201@1x.webp"
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar produtos do Shopify:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchShopifyProducts();
+  }, []);
 
   useEffect(() => {
     const fetchLogo = async () => {
@@ -216,9 +247,9 @@ function HairGrowth() {
             </div>
           </div>
           
-          <button className="bg-white text-black px-10 py-4 rounded-full text-lg font-semibold hover:bg-white/80 transition-all duration-300 w-fit shadow-lg hover:shadow-black/20">
+          <Link to="/hair-growth-screening" className="bg-white text-black px-10 py-4 rounded-full text-lg font-semibold hover:bg-white/80 transition-all duration-300 w-fit shadow-lg hover:shadow-black/20 inline-block">
             Faça a triagem agora
-          </button>
+          </Link>
           
           <p className="text-sm text-white/80 mt-12 max-w-md leading-relaxed">
             *Baseado em estudos clínicos separados de minoxidil tópico e finasterida oral.
@@ -309,60 +340,68 @@ function HairGrowth() {
             Faça uma triagem rápida e descubra qual tratamento é ideal para o seu caso.
           </p>
           <div className="flex justify-center mb-16">
-            <button className="bg-black text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-rose-500 transition-all duration-300">
+            <Link to="/hair-growth-screening" className="bg-black text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-[#8A3A34]/90 transition-all duration-600 inline-block">
               Triagem Rápida
-            </button>
+            </Link>
           </div>
           
           <div className="relative">
-            {/* Slider container */}
-            <div
-              className="overflow-x-auto pb-8 w-full scroll-smooth"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              ref={sliderRef}
-            >
-              <div className="flex space-x-8 px-2 w-full transition-all duration-500">
-                {/* Map through products to create slides */}
-                {products.map((product, index) => (
-                  <div
-                    key={index}
-                    className={`w-96 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden shadow-lg transition-all duration-300 relative`}
-                  >
-                    <div className="p-6 pb-0">
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{product.tag}</span>
-                      <h3 className="text-xl font-semibold mt-1 mb-3">{product.name}</h3>
-                    </div>
-                    <div className="flex justify-center items-center pl-4 pt-4 pb-4 pr-0">
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full aspect-[1037/932] object-contain"
-                      />
-                    </div>
-                    <button className="absolute left-6 bottom-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all">
-                      <span className="text-xl font-light">+</span>
-                    </button>
-                  </div>
-                ))}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader className="w-12 h-12 text-rose-500 animate-spin mb-4" />
+                <p className="text-gray-600">Carregando produtos...</p>
               </div>
-            </div>
-            
-            {/* Navigation arrows */}
-            <button
-              onClick={goToPrevSlide}
-              className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg z-10 hidden md:block hover:bg-white hover:shadow-xl transition-all"
-            >
-              <ChevronLeft className="w-6 h-6 text-gray-800" />
-            </button>
-            <button
-              onClick={goToNextSlide}
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg z-10 hidden md:block hover:bg-white hover:shadow-xl transition-all"
-            >
-              <ChevronRight className="w-6 h-6 text-gray-800" />
-            </button>
+            ) : (
+              <>
+                {/* Slider container */}
+                <div
+                  className="overflow-x-auto pb-8 w-full scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  ref={sliderRef}
+                >
+                  <div className="flex space-x-8 px-2 w-full transition-all duration-500">
+                    {/* Map through products to create slides */}
+                    {products.map((product, index) => (
+                      <div
+                        key={product.id || index}
+                        className={`w-96 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden shadow-lg transition-all duration-300 relative`}
+                      >
+                        <div className="p-6 pb-0">
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{product.tag}</span>
+                          <h3 className="text-xl font-semibold mt-1 mb-3">{product.name}</h3>
+                        </div>
+                        <div className="flex justify-center items-center pl-4 pt-4 pb-4 pr-0">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.imageAlt || product.name}
+                            className="w-full aspect-[1037/932] object-contain"
+                            loading="lazy"
+                          />
+                        </div>
+                        <ProductDialog product={product} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Navigation arrows */}
+                <button
+                  onClick={goToPrevSlide}
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg z-10 hidden md:block hover:bg-white hover:shadow-xl transition-all"
+                  aria-label="Slide anterior"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-800" />
+                </button>
+                <button
+                  onClick={goToNextSlide}
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full shadow-lg z-10 hidden md:block hover:bg-white hover:shadow-xl transition-all"
+                  aria-label="Próximo slide"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-800" />
+                </button>
+              </>
+            )}
           </div>
-          
-          {/* No pagination dots */}
         </div>
       </div>
 
@@ -534,9 +573,9 @@ function HairGrowth() {
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Junte-se a milhares de homens que já recuperaram a confiança com nosso tratamento
           </p>
-          <button className="bg-black text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-rose-500 transition-all duration-300">
+          <Link to="/hair-growth-screening" className="bg-black text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-rose-500 transition-all duration-300 inline-block">
             Comece seu tratamento agora
-          </button>
+          </Link>
         </div>
       </div>
     </div>

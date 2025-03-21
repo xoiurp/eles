@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import { Routes, Route, Link } from 'react-router-dom';
 import HairGrowth from './pages/HairGrowth';
 import WeightLossScreening from './pages/WeightLossScreening';
+import HairGrowthScreening from './pages/HairGrowthScreening';
 
 function App() {
   const [textIndex, setTextIndex] = useState(0);
@@ -46,6 +47,7 @@ function App() {
     <div className="min-h-screen bg-white">
       <Routes>
         <Route path="/hair-growth" element={<HairGrowth />} />
+        <Route path="/hair-growth-screening" element={<HairGrowthScreening />} />
         <Route path="/emagrecimento" element={<WeightLossScreening />} />
         <Route path="/" element={
           <>
@@ -259,8 +261,8 @@ function App() {
                 <div className="mt-auto">
                 <p className="text-white/90 mb-4">Recupere os fios finos e o volume dos cabelos.</p>
                 <div className="flex gap-2">
-                  <button className="bg-white text-black px-4 py-2 rounded-full text-sm">Conhecer</button>
-                  <button className="bg-black/30 text-white px-4 py-2 rounded-full text-sm">Começar</button>
+                  <Link to="/hair-growth" className="bg-white text-black px-4 py-2 rounded-full text-sm">Conhecer</Link>
+                  <Link to="/hair-growth-screening" className="bg-black/30 text-white px-4 py-2 rounded-full text-sm">Começar</Link>
                 </div>
                 </div>
               </div>
