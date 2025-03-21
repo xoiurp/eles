@@ -3,7 +3,6 @@ import { HAIR_GROWTH_SYSTEM_PROMPT } from '../constants/hair-growth-prompts';
 
 interface DadosBasicos {
   idade: number;
-  sexo: string;
   status_capilar: string;
 }
 
@@ -36,10 +35,14 @@ interface Summary {
   elegivel_tratamento: boolean;
   tratamentos_recomendados?: Tratamento[];
 }
+interface ImageOption {
+  text: string;
+  imageUrl: string;
+}
 
 interface Question {
   pergunta: string;
-  opcoes?: string[];
+  opcoes?: string[] | ImageOption[];
   "did-you-know"?: boolean;
   "last_step"?: string;
   "input-text"?: boolean;
@@ -49,6 +52,7 @@ interface Question {
   "summary"?: Summary;
   "show_treatment_button"?: boolean;
   "is_treatment_selection"?: boolean;
+  "image_selection"?: boolean;
 }
 
 interface Message {
@@ -75,16 +79,21 @@ const fallbackChain: Question[] = [
     "red_flag_value": "< 18"
   },
   {
-    pergunta: "Qual é o seu sexo?",
-    opcoes: ["Masculino", "Feminino"]
-  },
-  {
-    pergunta: "Como você descreveria seu padrão atual de queda de cabelo?",
+    pergunta: "Selecione o padrão de calvície que mais se assemelha ao seu caso:",
+    "image_selection": true,
     opcoes: [
-      "Entradas na região frontal",
-      "Afinamento no topo da cabeça (coroa)",
-      "Queda difusa por todo o couro cabeludo",
-      "Não tenho queda de cabelo significativa"
+      {
+        text: "Entradas na região frontal",
+        imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Calvicie/visualelectric-1742594385472%201@1x.webp"
+      },
+      {
+        text: "Afinamento no topo da cabeça (coroa)",
+        imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Calvicie/coroa%201@1x.webp"
+      },
+      {
+        text: "Entradas e coroa",
+        imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Calvicie/ambos%201@1x.webp"
+      }
     ]
   },
   {
@@ -112,7 +121,9 @@ function HairGrowthScreening() {
   const [textInput, setTextInput] = useState<string>('');
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [hasRedFlags, setHasRedFlags] = useState<boolean>(false);
-  const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
+  const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({
+    sexo: "Masculino" // Default value since we're focusing on male users
+  });
   const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
   const [showPersonalDataForm, setShowPersonalDataForm] = useState<boolean>(false);
   const [dadosPessoais, setDadosPessoais] = useState<DadosPessoais>({
@@ -232,9 +243,7 @@ function HairGrowthScreening() {
       }
 
       // Atualizar dados básicos com base nas respostas
-      if (currentQuestion.pergunta.includes("sexo")) {
-        setDadosBasicos(prev => ({ ...prev, sexo: answer }));
-      } else if (currentQuestion.pergunta.includes("padrão atual de queda de cabelo")) {
+      if (currentQuestion.pergunta.includes("padrão de calvície") || currentQuestion.pergunta.includes("status capilar")) {
         setDadosBasicos(prev => ({ ...prev, status_capilar: answer }));
       }
 
@@ -423,7 +432,6 @@ function HairGrowthScreening() {
         <div className="bg-gray-50 p-4 rounded">
           <h4 className="font-semibold mb-2">Dados Básicos</h4>
           <p>Idade: {dados_basicos.idade} anos</p>
-          <p>Sexo: {dados_basicos.sexo}</p>
           <p>Status Capilar: {dados_basicos.status_capilar}</p>
         </div>
 
@@ -523,9 +531,8 @@ function HairGrowthScreening() {
       };
     }
 
-    if (currentQuestion.pergunta?.toLowerCase().includes("idade") || 
-        currentQuestion.pergunta.toLowerCase().includes("sexo") || 
-        currentQuestion.pergunta.toLowerCase().includes("padrão atual de queda")) {
+    if (currentQuestion.pergunta?.toLowerCase().includes("idade") ||
+        currentQuestion.pergunta.toLowerCase().includes("padrão de calvície")) {
       return {
         title: "Vamos começar com seus dados básicos",
         subtitle: "Estas informações são essenciais para personalizar seu plano"
@@ -636,17 +643,36 @@ function HairGrowthScreening() {
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  {currentQuestion.opcoes.map((opcao, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleOptionSelect(opcao)}
-                      className="w-full text-left px-6 sm:px-8 py-4 sm:py-5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
-                    >
-                      {opcao}
-                    </button>
-                  ))}
-                </div>
+                {currentQuestion.image_selection ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(currentQuestion.opcoes as ImageOption[]).map((opcao, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleOptionSelect(opcao.text)}
+                        className="flex flex-col items-center p-4 rounded-xl border border-gray-200 hover:border-[#8A3A34] hover:shadow-md transition-all duration-300"
+                      >
+                        <img
+                          src={opcao.imageUrl}
+                          alt={opcao.text}
+                          className="w-full h-48 object-contain mb-4 rounded-lg"
+                        />
+                        <span className="text-center font-medium text-gray-800">{opcao.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(currentQuestion.opcoes as string[]).map((opcao, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleOptionSelect(opcao)}
+                        className="w-full text-left px-6 sm:px-8 py-4 sm:py-5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-gray-700"
+                      >
+                        {opcao}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             ) : currentQuestion["input-text"] ? (
               <>
