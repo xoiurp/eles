@@ -121,9 +121,7 @@ function HairGrowthScreening() {
   const [textInput, setTextInput] = useState<string>('');
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [hasRedFlags, setHasRedFlags] = useState<boolean>(false);
-  const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({
-    sexo: "Masculino" // Default value since we're focusing on male users
-  });
+  const [dadosBasicos, setDadosBasicos] = useState<Partial<DadosBasicos>>({});
   const [showTreatmentOptions, setShowTreatmentOptions] = useState<boolean>(false);
   const [showPersonalDataForm, setShowPersonalDataForm] = useState<boolean>(false);
   const [dadosPessoais, setDadosPessoais] = useState<DadosPessoais>({
@@ -649,14 +647,20 @@ function HairGrowthScreening() {
                       <button
                         key={index}
                         onClick={() => handleOptionSelect(opcao.text)}
-                        className="flex flex-col items-center p-4 rounded-xl border border-gray-200 hover:border-[#8A3A34] hover:shadow-md transition-all duration-300"
+                        className="flex flex-col items-center p-0 rounded-xl border border-gray-200 hover:border-[#8A3A34] hover:shadow-md transition-all duration-300 overflow-hidden"
                       >
-                        <img
-                          src={opcao.imageUrl}
-                          alt={opcao.text}
-                          className="w-full h-48 object-contain mb-4 rounded-lg"
-                        />
-                        <span className="text-center font-medium text-gray-800">{opcao.text}</span>
+                        <div className="relative w-full h-56">
+                          <img
+                            src={opcao.imageUrl}
+                            alt={opcao.text}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Gradient overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <span className="text-center font-medium text-gray-800 block">{opcao.text}</span>
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
