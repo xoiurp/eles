@@ -87,7 +87,7 @@ const fallbackChain: Question[] = [
         imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Calvicie/visualelectric-1742594385472%201@1x.webp"
       },
       {
-        text: "Afinamento no topo da cabeça (coroa)",
+        text: "Afinamento no topo da cabeça",
         imageUrl: "https://kbnsvfltjmsocvccapcb.supabase.co/storage/v1/object/public/publicbucket/Calvicie/coroa%201@1x.webp"
       },
       {
