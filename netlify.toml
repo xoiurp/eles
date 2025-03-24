@@ -11,7 +11,11 @@
   functions = "netlify/functions"
 
 [functions]
-  # Aumentar o timeout das funções para 30 segundos (o padrão é 10)
+  # Local onde as funções estão armazenadas
+  directory = "netlify/functions"
+
+[functions."*"]
+  # Aumentar o timeout para 30 segundos (o padrão é 10)
   timeout = 30
 
 [[redirects]]

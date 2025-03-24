@@ -454,7 +454,61 @@ function HairGrowthScreening() {
   };
 
   const handleContinue = () => {
-    handleOptionSelect("Entendi");
+    // Implementar lógica de fallback direta para o did-you-know
+    // Isso evita o uso de API quando o problema tipicamente ocorre
+    if (currentQuestion["did-you-know"]) {
+      try {
+        // Primeiro tentamos avançar para a próxima pergunta da cadeia de fallback
+        // sem depender da API, que pode falhar após um did-you-know
+        const lastValidAnswer = answers.length > 0 ? 
+          answers[answers.length - 1].answer : "";
+        
+        // Determinar qual é a próxima pergunta no fluxo
+        // Se existirem menos de 4 perguntas no fallback chain, use a próxima
+        // Caso contrário, use uma pergunta genérica sobre tratamentos
+        const currentIndex = fallbackChain.findIndex(
+          (q: Question) => q.pergunta === currentQuestion.pergunta
+        );
+        
+        // Se encontrou a pergunta atual no fallback chain, avance para a próxima
+        if (currentIndex >= 0 && currentIndex < fallbackChain.length - 1) {
+          console.log("Avançando para a próxima pergunta no fallback chain após did-you-know");
+          const nextQuestion = fallbackChain[currentIndex + 1];
+          setCurrentQuestion(nextQuestion);
+          setCurrentStep(prev => prev + 1);
+          setAskedQuestions(prev => new Set([...prev, nextQuestion.pergunta]));
+          return;
+        }
+        
+        // Se não encontrou no fallback chain, vamos criar uma pergunta sobre tratamentos anteriores
+        const genericNextQuestion: Question = {
+          pergunta: "Você já tentou algum tratamento para queda de cabelo anteriormente?",
+          opcoes: ["Sim, com bons resultados", "Sim, sem resultados", "Não, nunca tentei"]
+        };
+        
+        console.log("Usando pergunta genérica após did-you-know");
+        setCurrentQuestion(genericNextQuestion);
+        setCurrentStep(prev => prev + 1);
+        setAskedQuestions(prev => new Set([...prev, genericNextQuestion.pergunta]));
+        return;
+      } catch (error) {
+        console.error("Erro ao processar did-you-know com fallback:", error);
+        // Se o fallback falhar, tenta o método regular como último recurso
+      }
+    }
+  
+    // Método regular como backup
+    try {
+      handleOptionSelect("Entendi");
+    } catch (error) {
+      console.error("Erro ao processar resposta para did-you-know:", error);
+      
+      // Fallback de segurança - sempre ir para a próxima pergunta no fallback chain
+      const nextQuestion = fallbackChain[1]; // Sempre vá para a segunda pergunta, a primeira é idade
+      setCurrentQuestion(nextQuestion);
+      setCurrentStep(prev => prev + 1);
+      setAskedQuestions(prev => new Set([...prev, nextQuestion.pergunta]));
+    }
   };
 
   const renderSummary = () => {
