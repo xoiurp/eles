@@ -53,7 +53,6 @@ interface Question {
   "show_treatment_button"?: boolean;
   "is_treatment_selection"?: boolean;
   "image_selection"?: boolean;
-  "error_recovery"?: boolean;
 }
 
 interface Message {
@@ -357,31 +356,6 @@ function HairGrowthScreening() {
   };
 
   const handleOptionSelect = async (answer: string) => {
-    // Se for uma opção de recuperação de erro, reiniciar com a pergunta atual
-    if (currentQuestion.error_recovery) {
-      // Remover a pergunta atual do conjunto de perguntas já feitas para permitir fazê-la novamente
-      const updatedAskedQuestions = new Set(askedQuestions);
-      updatedAskedQuestions.delete(currentQuestion.pergunta);
-      setAskedQuestions(updatedAskedQuestions);
-      
-      // Tentar novamente a partir da última pergunta não-erro
-      const lastValidQuestion = answers.length > 0 
-        ? answers[answers.length - 1].question 
-        : fallbackChain[0].pergunta;
-      
-      const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === lastValidQuestion);
-      if (currentIndex >= 0 && currentIndex < fallbackChain.length - 1) {
-        // Avançar para a próxima pergunta no fallback chain
-        setCurrentQuestion(fallbackChain[currentIndex + 1]);
-        setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
-      } else {
-        // Voltar para a primeira pergunta se não encontrar a pergunta atual no fallback
-        setCurrentQuestion(fallbackChain[0]);
-        setAskedQuestions(new Set([fallbackChain[0].pergunta]));
-      }
-      return;
-    }
-    
     if (currentQuestion.is_treatment_selection) {
       // Extrair nome e preço do tratamento selecionado
       const tratamentoNome = answer.split(" - ")[0];
@@ -413,19 +387,10 @@ function HairGrowthScreening() {
     try {
       const nextQuestion = await getNextQuestionFromClaude(answer);
       if (nextQuestion) {
-        // Verificar se a resposta é uma mensagem de erro de recuperação
-        if (nextQuestion.error_recovery) {
-          console.log("Resposta de recuperação de erro recebida:", nextQuestion);
-          setCurrentQuestion(nextQuestion);
-          // Não incrementar o passo atual já que estamos em modo de recuperação
-        } else {
-          // Resposta normal - avançar para a próxima pergunta
-          setCurrentQuestion(nextQuestion);
-          setCurrentStep(prev => prev + 1);
-          setTextInput('');
-        }
+        setCurrentQuestion(nextQuestion);
+        setCurrentStep(prev => prev + 1);
+        setTextInput('');
       } else {
-        // Fallback para a próxima pergunta na cadeia
         const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === currentQuestion.pergunta);
         if (currentIndex < fallbackChain.length - 1) {
           setCurrentQuestion(fallbackChain[currentIndex + 1]);
@@ -434,15 +399,11 @@ function HairGrowthScreening() {
       }
     } catch (error) {
       console.error("Erro ao processar resposta:", error);
-      
-      // Criar uma pergunta de recuperação ao invés de simplesmente avançar
-      const errorRecoveryQuestion: Question = {
-        pergunta: `Ocorreu um erro ao processar sua resposta. Por favor, tente novamente.`,
-        opcoes: ["Tentar novamente"],
-        "error_recovery": true
-      };
-      setCurrentQuestion(errorRecoveryQuestion);
-      setError(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      const currentIndex = fallbackChain.findIndex((q: Question) => q.pergunta === currentQuestion.pergunta);
+      if (currentIndex < fallbackChain.length - 1) {
+        setCurrentQuestion(fallbackChain[currentIndex + 1]);
+        setAskedQuestions(prev => new Set([...prev, fallbackChain[currentIndex + 1].pergunta]));
+      }
     }
   };
 
@@ -454,61 +415,7 @@ function HairGrowthScreening() {
   };
 
   const handleContinue = () => {
-    // Implementar lógica de fallback direta para o did-you-know
-    // Isso evita o uso de API quando o problema tipicamente ocorre
-    if (currentQuestion["did-you-know"]) {
-      try {
-        // Primeiro tentamos avançar para a próxima pergunta da cadeia de fallback
-        // sem depender da API, que pode falhar após um did-you-know
-        const lastValidAnswer = answers.length > 0 ? 
-          answers[answers.length - 1].answer : "";
-        
-        // Determinar qual é a próxima pergunta no fluxo
-        // Se existirem menos de 4 perguntas no fallback chain, use a próxima
-        // Caso contrário, use uma pergunta genérica sobre tratamentos
-        const currentIndex = fallbackChain.findIndex(
-          (q: Question) => q.pergunta === currentQuestion.pergunta
-        );
-        
-        // Se encontrou a pergunta atual no fallback chain, avance para a próxima
-        if (currentIndex >= 0 && currentIndex < fallbackChain.length - 1) {
-          console.log("Avançando para a próxima pergunta no fallback chain após did-you-know");
-          const nextQuestion = fallbackChain[currentIndex + 1];
-          setCurrentQuestion(nextQuestion);
-          setCurrentStep(prev => prev + 1);
-          setAskedQuestions(prev => new Set([...prev, nextQuestion.pergunta]));
-          return;
-        }
-        
-        // Se não encontrou no fallback chain, vamos criar uma pergunta sobre tratamentos anteriores
-        const genericNextQuestion: Question = {
-          pergunta: "Você já tentou algum tratamento para queda de cabelo anteriormente?",
-          opcoes: ["Sim, com bons resultados", "Sim, sem resultados", "Não, nunca tentei"]
-        };
-        
-        console.log("Usando pergunta genérica após did-you-know");
-        setCurrentQuestion(genericNextQuestion);
-        setCurrentStep(prev => prev + 1);
-        setAskedQuestions(prev => new Set([...prev, genericNextQuestion.pergunta]));
-        return;
-      } catch (error) {
-        console.error("Erro ao processar did-you-know com fallback:", error);
-        // Se o fallback falhar, tenta o método regular como último recurso
-      }
-    }
-  
-    // Método regular como backup
-    try {
-      handleOptionSelect("Entendi");
-    } catch (error) {
-      console.error("Erro ao processar resposta para did-you-know:", error);
-      
-      // Fallback de segurança - sempre ir para a próxima pergunta no fallback chain
-      const nextQuestion = fallbackChain[1]; // Sempre vá para a segunda pergunta, a primeira é idade
-      setCurrentQuestion(nextQuestion);
-      setCurrentStep(prev => prev + 1);
-      setAskedQuestions(prev => new Set([...prev, nextQuestion.pergunta]));
-    }
+    handleOptionSelect("Entendi");
   };
 
   const renderSummary = () => {
