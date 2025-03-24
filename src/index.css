@@ -137,6 +137,20 @@ html {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Smooth transitions for testimonial cards */
+.testimonial-slider-container {
+  transition-property: opacity, transform;
+  transition-duration: 700ms;
+  transition-timing-function: ease-in-out;
+}
+
+.testimonial-card {
+  transition: all 700ms ease-in-out;
+  transform-origin: center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
 /* Better touch handling for mobile */
 @media (hover: none) {
   .cursor-grab {
