@@ -54,7 +54,7 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({ testimonial }) => {
             {testimonial.name.charAt(0)}
           </div>
           <div>
-            <h3 className="font-semibold">{testimonial.name} {testimonial.name.charAt(0)}.</h3>
+            <h3 className="font-semibold">{testimonial.name}</h3>
             <div className="flex items-center text-xs text-gray-500 mt-1">
               <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-[#8A3A34]" />
               <span>Review Verificado</span>

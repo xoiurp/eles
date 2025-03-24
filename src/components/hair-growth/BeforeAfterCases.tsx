@@ -173,9 +173,9 @@ const BeforeAfterCases: React.FC = () => {
       <div className="relative" style={{ height: '400px' }} /> {/* Spacer with sufficient height for the slider */}
       
       {/* Pagination and disclaimer in max-width container */}
-      <div className="max-w-[1280px] mx-auto px-6 md:px-8 relative mt-12">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-8 relative mt-20">
         {/* Pagination indicators - exclude the placeholder slide */}
-        <div className="flex justify-center items-center space-x-1 mt-4">
+        <div className="flex justify-center items-center space-x-3 mt-8">
           {beforeAfterCases.map((_, index) => (
             <button
               key={index}
